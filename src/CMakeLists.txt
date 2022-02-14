@@ -293,8 +293,10 @@ endif()
 message(STATUS "Searching for CUDA...")
 
 find_package(CUDA QUIET)
-
+  set(CUDA_VERSION_STRING "11.1")
+  set(CUDA_TOOLKIT_ROOT_DIR "C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v11.1")
 if(CUDA_FOUND)
+
   message(STATUS "  CUDA version:          ${CUDA_VERSION_STRING}")
   message(STATUS "  CUDA toolkit root dir: ${CUDA_TOOLKIT_ROOT_DIR}")
   mark_as_advanced(FORCE CUDA_TOOLKIT_ROOT_DIR)
@@ -362,6 +364,7 @@ else()
 endif()
 
 if(THRUST_FOUND)
+  set(THRUST_INCLUDE_DIR "C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v11.1/include")
   message(STATUS "  Thrust version:     ${THRUST_VERSION}")
   message(STATUS "  Thrust include dir: ${THRUST_INCLUDE_DIR}")
   mark_as_advanced(FORCE THRUST_INCLUDE_DIR)
