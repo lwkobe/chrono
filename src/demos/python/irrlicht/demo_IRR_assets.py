@@ -29,9 +29,9 @@ mphysicalSystem = chrono.ChSystemNSC()
 application = chronoirr.ChIrrApp(mphysicalSystem, "Assets for Irrlicht visualization", chronoirr.dimension2du(1024, 768))
 
 # Easy shorcuts to add camera, lights, logo, and sky in Irrlicht scene
-application.AddTypicalSky()
-application.AddTypicalLogo(chrono.GetChronoDataFile('logo_pychrono_alpha.png'))
-application.AddTypicalCamera(chronoirr.vector3df(0, 4, -6))
+application.AddSkyBox()
+application.AddLogo(chrono.GetChronoDataFile('logo_pychrono_alpha.png'))
+application.AddCamera(chronoirr.vector3df(0, 4, -6))
 application.AddTypicalLights()
 
 
@@ -304,6 +304,7 @@ application.SetTryRealtime(True)
 while application.GetDevice().run():
     application.BeginScene()
     application.DrawAll()
+    application.GetIGUIEnvironment().addStaticText('Hello World!', chronoirr.recti(50, 60, 150, 80))
     application.DoStep()
     application.EndScene()
 

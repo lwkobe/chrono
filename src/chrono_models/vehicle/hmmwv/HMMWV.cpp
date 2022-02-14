@@ -290,15 +290,6 @@ void HMMWV::Initialize() {
 }
 
 // -----------------------------------------------------------------------------
-void HMMWV::SetTireVisualizationType(VisualizationType vis) {
-    for (auto& axle : m_vehicle->GetAxles()) {
-        for (auto& wheel : axle->GetWheels()) {
-            wheel->GetTire()->SetVisualizationType(vis);
-        }
-    }
-}
-
-// -----------------------------------------------------------------------------
 void HMMWV::Synchronize(double time, const ChDriver::Inputs& driver_inputs, const ChTerrain& terrain) {
     m_vehicle->Synchronize(time, driver_inputs, terrain);
 }
@@ -317,12 +308,12 @@ double HMMWV::GetTotalMass() const {
 
 HMMWV_Vehicle* HMMWV_Full::CreateVehicle() {
     if (m_system) {
-        return new HMMWV_VehicleFull(m_system, m_fixed, m_driveType, m_brake_type, m_steeringType, m_rigidColumn,
-                                     m_chassisCollisionType);
+        return new HMMWV_VehicleFull(m_system, m_fixed, m_driveType, m_brake_type, m_steeringType, m_use_tierod_bodies,
+                                     m_rigidColumn, m_chassisCollisionType);
     }
 
-    return new HMMWV_VehicleFull(m_fixed, m_driveType, m_brake_type, m_steeringType, m_rigidColumn, m_contactMethod,
-                                 m_chassisCollisionType);
+    return new HMMWV_VehicleFull(m_fixed, m_driveType, m_brake_type, m_steeringType, m_use_tierod_bodies, m_rigidColumn,
+                                 m_contactMethod, m_chassisCollisionType);
 }
 
 HMMWV_Vehicle* HMMWV_Reduced::CreateVehicle() {

@@ -119,11 +119,6 @@ class CH_VEHICLE_API ChVehicle {
     /// Get a handle to the vehicle's driveshaft body.
     virtual std::shared_ptr<ChShaft> GetDriveshaft() const = 0;
 
-    /// Get the angular speed of the driveshaft.
-    /// This function provides the interface between a vehicle system and a
-    /// powertrain system.
-    virtual double GetDriveshaftSpeed() const = 0;
-
     /// Get the global location of the driver.
     ChVector<> GetDriverPos() const { return m_chassis->GetDriverPos(); }
 
@@ -162,6 +157,9 @@ class CH_VEHICLE_API ChVehicle {
     /// Enable/disable output from the chassis subsystem.
     void SetChassisOutput(bool state);
 
+    /// Return true if the vehicle model contains bushings.
+    bool HasBushings() const { return m_chassis->HasBushings(); }
+
     /// Advance the state of this vehicle by the specified time step.
     /// A call to ChSystem::DoStepDynamics is done only if the vehicle owns the underlying Chrono system.
     /// Otherwise, the caller is responsible for advancing the sate of the entire system.
@@ -191,7 +189,10 @@ class CH_VEHICLE_API ChVehicle {
     /// All physical components of the vehicle will be added to that system.
     ChVehicle(const std::string& name,  ///< [in] vehicle name
               ChSystem* system          ///< [in] containing mechanical system
-              );
+    );
+
+    /// Set the associated Chrono system.
+    void SetSystem(ChSystem* sys) { m_system = sys; }
 
     /// Utility function for testing if any subsystem in a list generates output.
     template <typename T>
@@ -214,6 +215,8 @@ class CH_VEHICLE_API ChVehicle {
     std::shared_ptr<ChChassis> m_chassis;         ///< handle to the main chassis subsystem
     ChChassisRearList m_chassis_rear;             ///< list of rear chassis subsystems (can be empty)
     ChChassisConnectorList m_chassis_connectors;  ///< list of chassis connector (must match m_chassis_rear)
+
+    friend class ChVehicleCosimVehicleNode;
 };
 
 /// @} vehicle

@@ -169,8 +169,8 @@ class ChronoModelL : public ChronoModel {
     virtual std::string GetJointType() const override { return "LinkLock"; }
 
   private:
-    virtual ChVectorDynamic<> GetViolation1() override { return m_prismatic->GetC(); }
-    virtual ChVectorDynamic<> GetViolation2() override { return m_revolute->GetC(); }
+    virtual ChVectorDynamic<> GetViolation1() override { return m_prismatic->GetConstraintViolation(); }
+    virtual ChVectorDynamic<> GetViolation2() override { return m_revolute->GetConstraintViolation(); }
 
     std::shared_ptr<ChLinkLockPrismatic> m_prismatic;
     std::shared_ptr<ChLinkLockRevolute> m_revolute;
@@ -183,8 +183,8 @@ class ChronoModelM : public ChronoModel {
     virtual std::string GetJointType() const override { return "LinkMate"; }
 
   private:
-    virtual ChVectorDynamic<> GetViolation1() override { return m_prismatic->GetC(); }
-    virtual ChVectorDynamic<> GetViolation2() override { return m_revolute->GetC(); }
+    virtual ChVectorDynamic<> GetViolation1() override { return m_prismatic->GetConstraintViolation(); }
+    virtual ChVectorDynamic<> GetViolation2() override { return m_revolute->GetConstraintViolation(); }
 
     std::shared_ptr<ChLinkMateGeneric> m_prismatic;
     std::shared_ptr<ChLinkMateGeneric> m_revolute;
@@ -229,7 +229,7 @@ ChronoModel::ChronoModel() {
     // Spring ground-cart
     // ------------------
     auto spring = chrono_types::make_shared<ChLinkTSDA>();
-    spring->Initialize(m_slider, m_ground, false, ChVector<>(0, 0, 0), ChVector<>(0, 0, 0), true);
+    spring->Initialize(m_slider, m_ground, false, ChVector<>(0, 0, 0), ChVector<>(0, 0, 0));
     spring->SetSpringCoefficient(k1);
     spring->SetDampingCoefficient(0);
     m_system->AddLink(spring);

@@ -34,6 +34,24 @@ namespace vehicle {
 ChShaftsDriveline4WD::ChShaftsDriveline4WD(const std::string& name)
     : ChDrivelineWV(name), m_dir_motor_block(ChVector<>(1, 0, 0)), m_dir_axle(ChVector<>(0, 1, 0)) {}
 
+ChShaftsDriveline4WD::~ChShaftsDriveline4WD() {
+    auto sys = m_central_differential->GetSystem();
+    if (sys) {
+        sys->Remove(m_central_differential);
+        sys->Remove(m_central_clutch);
+        sys->Remove(m_front_shaft);
+        sys->Remove(m_rear_shaft);
+        sys->Remove(m_rear_conicalgear);
+        sys->Remove(m_rear_differential);
+        sys->Remove(m_rear_differentialbox);
+        sys->Remove(m_rear_clutch);
+        sys->Remove(m_front_conicalgear);
+        sys->Remove(m_front_differential);
+        sys->Remove(m_front_differentialbox);
+        sys->Remove(m_front_clutch);
+    }
+}
+
 // -----------------------------------------------------------------------------
 // Initialize the driveline subsystem.
 // This function connects this driveline to the specified axles.
@@ -53,21 +71,21 @@ void ChShaftsDriveline4WD::Initialize(std::shared_ptr<ChChassis> chassis,
     // represents the connection of the driveline to the transmission box.
     m_driveshaft = chrono_types::make_shared<ChShaft>();
     m_driveshaft->SetInertia(GetDriveshaftInertia());
-    sys->Add(m_driveshaft);
+    sys->AddShaft(m_driveshaft);
 
     // Create a 1 d.o.f. object: a 'shaft' with rotational inertia.
     // This represents the shaft that connecting central differential to front
     // differential.
     m_front_shaft = chrono_types::make_shared<ChShaft>();
     m_front_shaft->SetInertia(GetToFrontDiffShaftInertia());
-    sys->Add(m_front_shaft);
+    sys->AddShaft(m_front_shaft);
 
     // Create a 1 d.o.f. object: a 'shaft' with rotational inertia.
     // This represents the shaft that connecting central differential to rear
     // differential.
     m_rear_shaft = chrono_types::make_shared<ChShaft>();
     m_rear_shaft->SetInertia(GetToRearDiffShaftInertia());
-    sys->Add(m_rear_shaft);
+    sys->AddShaft(m_rear_shaft);
 
     // Create the central differential, i.e. an epicycloidal mechanism that
     // connects three rotating members. This class of mechanisms can be simulated
@@ -92,7 +110,7 @@ void ChShaftsDriveline4WD::Initialize(std::shared_ptr<ChChassis> chassis,
     // This represents the inertia of the rotating box of the differential.
     m_rear_differentialbox = chrono_types::make_shared<ChShaft>();
     m_rear_differentialbox->SetInertia(GetRearDifferentialBoxInertia());
-    sys->Add(m_rear_differentialbox);
+    sys->AddShaft(m_rear_differentialbox);
 
     // Create an angled gearbox, i.e a transmission ratio constraint between two
     // non parallel shafts. This is the case of the 90° bevel gears in the
@@ -128,7 +146,7 @@ void ChShaftsDriveline4WD::Initialize(std::shared_ptr<ChChassis> chassis,
     // This represents the inertia of the rotating box of the differential.
     m_front_differentialbox = chrono_types::make_shared<ChShaft>();
     m_front_differentialbox->SetInertia(GetRearDifferentialBoxInertia());
-    sys->Add(m_front_differentialbox);
+    sys->AddShaft(m_front_differentialbox);
 
     // Create an angled gearbox, i.e a transmission ratio constraint between two
     // non parallel shafts. This is the case of the 90° bevel gears in the
@@ -229,6 +247,14 @@ double ChShaftsDriveline4WD::GetSpindleTorque(int axle, VehicleSide side) const 
     }
 
     return 0;
+}
+
+// -----------------------------------------------------------------------------
+void ChShaftsDriveline4WD::Disconnect() {
+    m_front_differential->SetDisabled(true);
+    m_rear_differential->SetDisabled(true);
+    m_front_clutch->SetDisabled(true);
+    m_rear_clutch->SetDisabled(true);
 }
 
 }  // end namespace vehicle

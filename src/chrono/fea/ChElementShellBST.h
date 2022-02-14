@@ -204,36 +204,32 @@ class ChApi ChElementShellBST : public ChElementShell , public ChLoadableUV, pub
 	int nodes_used_to_six[6];  // for optimization. Maps [0,n_usednodes) to six nodes index [0..6). Padded with -1 after n_usednodes.
 
   public:
-
     std::vector<std::shared_ptr<ChNodeFEAxyz> > m_nodes;  ///< element nodes
 
     std::vector<Layer> m_layers;     ///< element layers
     std::vector<double> m_layers_z;  ///< layer separation z values (not scaled, default centered tot thickness)
 
-    double tot_thickness;                         ///< total element thickness
+    double tot_thickness;  ///< total element thickness
 
-	ChMatrixNM<double, 2, 2> Jux;      ///< jacobian [d{u,v}/d{x,y}], as inverse of [d{x,y}/d{u,v}]
+    ChMatrixNM<double, 2, 2> Jux;  ///< jacobian [d{u,v}/d{x,y}], as inverse of [d{x,y}/d{u,v}]
 
-	double area;   // initial element triangle area
+    double area;    ///< initial element triangle area
+    ChVector<> l0;  ///< initial lengths
 
-	ChVector<> l0; // initial lengths
+    ChVector<> cM[3];  ///< cM coefficients
+    ChVector<> cI[3];  ///< cI coefficients
+    ChVector<> rI;     ///< rI coefficients = RIi/(RMi/RIi) = (1/hIi)/((1/hMi)(1/hIi))
+    ChVector<> phi0;   ///< initial edge bendings
+    ChVector<> phi;    ///< actual edge bendings (last computed)
 
-	ChVector<> cM[3];   // cM coefficients
-	ChVector<> cI[3];   // cI coefficients
-	ChVector<> rI;		// rI coefficients = RIi/(RMi/RIi) = (1/hIi)/((1/hMi)(1/hIi))
-	ChVector<> phi0; // initial edge bendings
-	ChVector<> phi; // actual edge bendings (last computed) - can be made temp in force computation if not needed to fetch 
+    ChVector<> k0;  ///< initial curvature (not needed?)
+    ChVector<> e0;  ///< initial strain
 
-	ChVector<> k0; // initial curvature // not needed?
-	ChVector<> e0; // initial strain
+    ChVector<> k;  ///< actual curvature (last computed)
+    ChVector<> e;  ///< actual strain (last computed)
 
-	
-
-	ChVector<> k; // actual curvature (last computed)
-	ChVector<> e; // actual strain (last computed)
-
-	ChVector<> n; // actual stress, membrane (last computed)
-	ChVector<> m; // actual stress, bending (last computed)
+    ChVector<> n;  ///< actual stress, membrane (last computed)
+    ChVector<> m;  ///< actual stress, bending (last computed)
 
   public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
@@ -325,16 +321,19 @@ class ChApi ChElementShellBST : public ChElementShell , public ChLoadableUV, pub
     /// tetrahedron finite element or a cable, = 1 for a thermal problem, etc.
     virtual int Get_field_ncoords() override { return 3; }
 
-    /// Tell the number of DOFs blocks (ex. =1 for a body, =4 for a tetrahedron, etc.)
+    /// Get the number of DOFs sub-blocks.
     virtual int GetSubBlocks() override { return n_usednodes; }
 
-    /// Get the offset of the i-th sub-block of DOFs in global vector.
-    virtual unsigned int GetSubBlockOffset(int nblock) override { return m_nodes[nodes_used_to_six[nblock]]->NodeGetOffset_w(); }
+    /// Get the offset of the specified sub-block of DOFs in global vector.
+    virtual unsigned int GetSubBlockOffset(int nblock) override {
+        return m_nodes[nodes_used_to_six[nblock]]->NodeGetOffset_w();
+    }
 
-    /// Get the size of the i-th sub-block of DOFs in global vector.
+    /// Get the size of the specified sub-block of DOFs in global vector.
     virtual unsigned int GetSubBlockSize(int nblock) override { return 3; }
 
-    
+    /// Check if the specified sub-block of DOFs is active.
+    virtual bool IsSubBlockActive(int nblock) const override { return !m_nodes[nodes_used_to_six[nblock]]->GetFixed(); }
 
     /// Get the pointers to the contained ChVariables, appending to the mvars vector.
     virtual void LoadableGetVariables(std::vector<ChVariables*>& mvars) override;

@@ -78,6 +78,9 @@ class CH_VEHICLE_API ChWheeledVehicle : public ChVehicle {
     /// Get the specified suspension subsystem.
     std::shared_ptr<ChSuspension> GetSuspension(int id) const { return m_axles[id]->m_suspension; }
 
+    /// Get all vehicle steering subsystems.
+    const ChSteeringList& GetSteerings() const { return m_steerings; }
+
     /// Get the specified steering subsystem.
     std::shared_ptr<ChSteering> GetSteering(int id) const { return m_steerings[id]; }
 
@@ -112,11 +115,6 @@ class CH_VEHICLE_API ChWheeledVehicle : public ChVehicle {
 
     /// Get a handle to the vehicle's driveshaft body.
     virtual std::shared_ptr<ChShaft> GetDriveshaft() const override { return m_driveline->GetDriveshaft(); }
-
-    /// Get the angular speed of the driveshaft.
-    /// This function provides the interface between a vehicle system and a
-    /// powertrain system.
-    virtual double GetDriveshaftSpeed() const override;
 
     /// Return the number of axles for this vehicle.
     virtual int GetNumberAxles() const = 0;
@@ -170,6 +168,10 @@ class CH_VEHICLE_API ChWheeledVehicle : public ChVehicle {
     /// This function should be called only after vehicle initialization.
     void SetWheelVisualizationType(VisualizationType vis);
 
+    /// Set visualization type for the tire subsystems.
+    /// This function should be called only after vehicle and tire initialization.
+    void SetTireVisualizationType(VisualizationType vis);
+
     /// Enable/disable collision between the chassis and all other vehicle subsystems.
     /// This only controls collisions between the chassis and the tire systems.
     virtual void SetChassisVehicleCollide(bool state) override;
@@ -181,6 +183,10 @@ class CH_VEHICLE_API ChWheeledVehicle : public ChVehicle {
     /// Enable/disable output from the steering subsystems.
     /// See also ChVehicle::SetOuput.
     void SetSteeringOutput(int id, bool state);
+
+    /// Enable/disable output from the subchassis subsystems.
+    /// See also ChVehicle::SetOuput.
+    void SetSubchassisOutput(int id, bool state);
 
     /// Enable/disable output from the anti-roll bar subsystems.
     /// See also ChVehicle::SetOuput.
@@ -243,6 +249,10 @@ class CH_VEHICLE_API ChWheeledVehicle : public ChVehicle {
 
     /// Returns the state of the parking brake (true if enagaged, false otherwise).
     bool ParkingBrake() const { return m_parking_on; }
+
+    /// Disconnect driveline.
+    /// This function has no effect if called before vehicle initialization.
+    void DisconnectDriveline();
 
     /// Log current constraint violations.
     virtual void LogConstraintViolations() override;

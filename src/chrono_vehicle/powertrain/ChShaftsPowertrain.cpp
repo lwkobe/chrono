@@ -31,9 +31,23 @@ namespace vehicle {
 ChShaftsPowertrain::ChShaftsPowertrain(const std::string& name, const ChVector<>& dir_motor_block)
     : ChPowertrain(name), m_dir_motor_block(dir_motor_block), m_last_time_gearshift(0), m_gear_shift_latency(0.5) {}
 
+ChShaftsPowertrain::~ChShaftsPowertrain() {
+    auto sys = m_engine->GetSystem();
+    if (sys) {
+        sys->Remove(m_motorblock_to_body);
+        sys->Remove(m_motorblock);
+        sys->Remove(m_engine);
+        sys->Remove(m_engine_losses);
+        sys->Remove(m_crankshaft);
+        sys->Remove(m_torqueconverter);
+        sys->Remove(m_shaft_ingear);
+        sys->Remove(m_gears);
+    }
+}
+
 // -----------------------------------------------------------------------------
-void ChShaftsPowertrain::Initialize(std::shared_ptr<ChChassis> chassis, std::shared_ptr<ChDriveline> driveline) {
-    ChPowertrain::Initialize(chassis, driveline);
+void ChShaftsPowertrain::Initialize(std::shared_ptr<ChChassis> chassis) {
+    ChPowertrain::Initialize(chassis);
 
     assert(chassis->GetBody()->GetSystem());
     ChSystem* my_system = chassis->GetBody()->GetSystem();
@@ -51,7 +65,7 @@ void ChShaftsPowertrain::Initialize(std::shared_ptr<ChChassis> chassis, std::sha
     // pressing the throttle, like in muscle cars)
     m_motorblock = chrono_types::make_shared<ChShaft>();
     m_motorblock->SetInertia(GetMotorBlockInertia());
-    my_system->Add(m_motorblock);
+    my_system->AddShaft(m_motorblock);
 
     // CREATE  a connection between the motor block and the 3D rigid body that
     // represents the chassis. This allows to get the effect of the car 'rolling'
@@ -64,7 +78,7 @@ void ChShaftsPowertrain::Initialize(std::shared_ptr<ChChassis> chassis, std::sha
     // This represents the crankshaft plus flywheel.
     m_crankshaft = chrono_types::make_shared<ChShaft>();
     m_crankshaft->SetInertia(GetCrankshaftInertia());
-    my_system->Add(m_crankshaft);
+    my_system->AddShaft(m_crankshaft);
 
     // CREATE  a thermal engine model between motor block and crankshaft (both
     // receive the torque, but with opposite sign).
@@ -91,7 +105,7 @@ void ChShaftsPowertrain::Initialize(std::shared_ptr<ChChassis> chassis, std::sha
     // This represents the shaft that collects all inertias from torque converter to the gear.
     m_shaft_ingear = chrono_types::make_shared<ChShaft>();
     m_shaft_ingear->SetInertia(GetIngearShaftInertia());
-    my_system->Add(m_shaft_ingear);
+    my_system->AddShaft(m_shaft_ingear);
 
     // CREATE a torque converter and connect the shafts:
     // A (input),B (output), C(truss stator).
@@ -108,11 +122,16 @@ void ChShaftsPowertrain::Initialize(std::shared_ptr<ChChassis> chassis, std::sha
     SetTorqeConverterTorqueRatioMap(mT);
     m_torqueconverter->SetCurveTorqueRatio(mT);
 
+    // Create the final power shaft (interface to a driveline)
+    m_shaft = chrono_types::make_shared<ChShaft>();
+    m_shaft->SetInertia(GetPowershaftInertia());
+    my_system->AddShaft(m_shaft);
+
     // CREATE a gearbox, i.e a transmission ratio constraint between two
     // shafts. Note that differently from the basic ChShaftsGear, this also provides
     // the possibility of transmitting a reaction torque to the box (the truss).
     m_gears = chrono_types::make_shared<ChShaftsGearbox>();
-    m_gears->Initialize(m_shaft_ingear, driveline->GetDriveshaft(), chassis->GetBody(), m_dir_motor_block);
+    m_gears->Initialize(m_shaft_ingear, m_shaft, chassis->GetBody(), m_dir_motor_block);
     m_gears->SetTransmissionRatio(m_current_gear_ratio);
     my_system->Add(m_gears);
 }
@@ -129,7 +148,10 @@ void ChShaftsPowertrain::OnNeutralShift() {
 }
 
 // -----------------------------------------------------------------------------
-void ChShaftsPowertrain::Synchronize(double time, double throttle) {
+void ChShaftsPowertrain::Synchronize(double time, double throttle, double shaft_speed) {
+    // Apply shaft speed 
+    m_shaft->SetPos_dt(shaft_speed);
+
     // Just update the throttle level in the thermal engine
     m_engine->SetThrottle(throttle);
 
@@ -154,6 +176,10 @@ void ChShaftsPowertrain::Synchronize(double time, double throttle) {
             }
         }
     }
+}
+
+double ChShaftsPowertrain::GetOutputTorque() const {
+    return m_gears->GetTorqueReactionOn2();
 }
 
 }  // end namespace vehicle

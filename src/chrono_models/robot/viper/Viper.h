@@ -25,7 +25,7 @@
 #include <array>
 
 #include "chrono/assets/ChColor.h"
-#include "chrono/physics/ChLinkMotorRotationSpeed.h"
+#include "chrono/physics/ChLinkMotorRotation.h"
 #include "chrono/physics/ChSystem.h"
 #include "chrono/physics/ChShaft.h"
 
@@ -40,15 +40,15 @@ namespace viper {
 /// @{
 
 /// Viper wheel/suspension identifiers.
-enum WheelID {
-    LF = 0,  ///< left front
-    RF = 1,  ///< right front
-    LB = 2,  ///< left back
-    RB = 3   ///< right back
+enum ViperWheelID {
+    V_LF = 0,  ///< left front
+    V_RF = 1,  ///< right front
+    V_LB = 2,  ///< left back
+    V_RB = 3   ///< right back
 };
 
 /// Viper wheel type.
-enum class WheelType {
+enum class ViperWheelType {
     RealWheel,    ///< actual geometry of the Viper wheel
     SimpleWheel,  ///< simplified wheel geometry
     CylWheel      ///< cylindrical wheel geometry
@@ -58,10 +58,13 @@ enum class WheelType {
 
 /// Base class definition for all Viper parts.
 /// Viper Rover Parts include Chassis, Steering, Upper Suspension Arm, Bottom Suspension Arm and Wheel.
-/// This class encapsulates base fields and functions.
 class CH_MODELS_API ViperPart {
   public:
-    ViperPart(const std::string& name, const ChFrame<>& rel_pos, std::shared_ptr<ChMaterialSurface> mat, bool collide);
+    ViperPart(const std::string& name,                 ///< part name
+              const ChFrame<>& rel_pos,                ///< position relative to chassis frame
+              std::shared_ptr<ChMaterialSurface> mat,  ///< contact material
+              bool collide                             ///< enable collision?
+    );
     virtual ~ViperPart() {}
 
     /// Return the name of the part.
@@ -107,19 +110,24 @@ class CH_MODELS_API ViperPart {
     const ChVector<> GetAngAcc() const { return m_body->GetFrame_REF_to_abs().GetWacc_par(); }
 
   protected:
-    /// Complete construction of the part.
+    /// Utility function for calculating mass properties using the part's collision mesh.
+    void CalcMassProperties(double density);
+
+    /// Construct the part body.
     void Construct(ChSystem* system);
 
     std::string m_name;                        ///< part name
     std::shared_ptr<ChBodyAuxRef> m_body;      ///< part rigid body
-    std::shared_ptr<ChMaterialSurface> m_mat;  ///< contact material (shared among all shapes)
+    std::shared_ptr<ChMaterialSurface> m_mat;  ///< contact material
 
-    ChFrame<> m_mesh_xform;   ///< mesh transform (translate, rotate, scale)
     std::string m_mesh_name;  ///< visualization mesh name
+    ChFrame<> m_mesh_xform;   ///< mesh transform (translate, rotate, scale)
     ChColor m_color;          ///< visualization asset color
 
-    ChFrame<> m_pos;   ///< relative position wrt chassis
-    double m_density;  ///< part density
+    ChFrame<> m_pos;       ///< relative position wrt the chassis
+    double m_mass;         ///< mass
+    ChVector<> m_inertia;  ///< principal moments of inertia
+    ChFrame<> m_cog;       ///< COG frame (relative to body frame)
 
     bool m_visualize;  ///< part visualization flag
     bool m_collide;    ///< part collision flag
@@ -128,7 +136,9 @@ class CH_MODELS_API ViperPart {
 /// Viper rover Chassis.
 class CH_MODELS_API ViperChassis : public ViperPart {
   public:
-    ViperChassis(const std::string& name, std::shared_ptr<ChMaterialSurface> mat);
+    ViperChassis(const std::string& name,                ///< part name
+                 std::shared_ptr<ChMaterialSurface> mat  ///< contact material
+    );
     ~ViperChassis() {}
 
     /// Initialize the chassis at the specified (absolute) position.
@@ -138,10 +148,11 @@ class CH_MODELS_API ViperChassis : public ViperPart {
 /// Viper rover Wheel.
 class CH_MODELS_API ViperWheel : public ViperPart {
   public:
-    ViperWheel(const std::string& name,
-               const ChFrame<>& rel_pos,
-               std::shared_ptr<ChMaterialSurface> mat,
-               WheelType wheel_type);
+    ViperWheel(const std::string& name,                 ///< part name
+               const ChFrame<>& rel_pos,                ///< position relative to chassis frame
+               std::shared_ptr<ChMaterialSurface> mat,  ///< contact material
+               ViperWheelType wheel_type                ///< wheel type
+    );
     ~ViperWheel() {}
 
     friend class Viper;
@@ -150,20 +161,22 @@ class CH_MODELS_API ViperWheel : public ViperPart {
 /// The upper arm of the Viper rover suspension.
 class CH_MODELS_API ViperUpperArm : public ViperPart {
   public:
-    ViperUpperArm(const std::string& name,
-                  const ChFrame<>& rel_pos,
-                  std::shared_ptr<ChMaterialSurface> mat,
-                  const int& side);  ///< indicate which side of the suspension 0->L, 1->R
+    ViperUpperArm(const std::string& name,                 ///< part name
+                  const ChFrame<>& rel_pos,                ///< position relative to chassis frame
+                  std::shared_ptr<ChMaterialSurface> mat,  ///< contact material
+                  const int& side                          ///< vehicle side 0: L, 1: R
+    );
     ~ViperUpperArm() {}
 };
 
 /// The bottom arm of the Viper rover suspension.
 class CH_MODELS_API ViperLowerArm : public ViperPart {
   public:
-    ViperLowerArm(const std::string& name,
-                  const ChFrame<>& rel_pos,
-                  std::shared_ptr<ChMaterialSurface> mat,
-                  const int& side);  ///< indicate which side of the suspension 0->L, 1->R
+    ViperLowerArm(const std::string& name,                 ///< part name
+                  const ChFrame<>& rel_pos,                ///< position relative to chassis frame
+                  std::shared_ptr<ChMaterialSurface> mat,  ///< contact material
+                  const int& side                          ///< vehicle side 0: L, 1: R
+    );
     ~ViperLowerArm() {}
 };
 
@@ -172,10 +185,11 @@ class CH_MODELS_API ViperLowerArm : public ViperPart {
 /// There are two connecting rods on the steering rod, linking to upper and bottom arms of the suspension.
 class CH_MODELS_API ViperUpright : public ViperPart {
   public:
-    ViperUpright(const std::string& name,
-                 const ChFrame<>& rel_pos,
-                 std::shared_ptr<ChMaterialSurface> mat,
-                 const int& side);  ///< indicate which side of the rover 0->L, 1->R
+    ViperUpright(const std::string& name,                 ///< part name
+                 const ChFrame<>& rel_pos,                ///< position relative to chassis frame
+                 std::shared_ptr<ChMaterialSurface> mat,  ///< contact material
+                 const int& side                          ///< vehicle side 0: L, 1: R
+    );
     ~ViperUpright() {}
 };
 
@@ -188,7 +202,7 @@ class ViperDriver;
 /// This class should be the entry point to create a complete rover.
 class CH_MODELS_API Viper {
   public:
-    Viper(ChSystem* system, WheelType wheel_type = WheelType::RealWheel);
+    Viper(ChSystem* system, ViperWheelType wheel_type = ViperWheelType::RealWheel);
 
     ~Viper() {}
 
@@ -216,23 +230,23 @@ class CH_MODELS_API Viper {
     /// Initialize the Viper rover at the specified position.
     void Initialize(const ChFrame<>& pos);
 
-    /// Get the chassis part.
+    /// Get the rover chassis.
     std::shared_ptr<ViperChassis> GetChassis() const { return m_chassis; }
 
     /// Get the specified rover wheel.
-    std::shared_ptr<ViperWheel> GetWheel(WheelID id) const { return m_wheels[id]; }
+    std::shared_ptr<ViperWheel> GetWheel(ViperWheelID id) const { return m_wheels[id]; }
 
     /// Get the specified rover upright.
-    std::shared_ptr<ViperUpright> GetUpright(WheelID id) const { return m_uprights[id]; }
+    std::shared_ptr<ViperUpright> GetUpright(ViperWheelID id) const { return m_uprights[id]; }
 
     /// Get the specified rover upper arm.
-    std::shared_ptr<ViperUpperArm> GetUpperArm(WheelID id) const { return m_upper_arms[id]; }
+    std::shared_ptr<ViperUpperArm> GetUpperArm(ViperWheelID id) const { return m_upper_arms[id]; }
 
     /// Get the specified rover lower arm.
-    std::shared_ptr<ViperLowerArm> GetLowerArm(WheelID id) const { return m_lower_arms[id]; }
+    std::shared_ptr<ViperLowerArm> GetLowerArm(ViperWheelID id) const { return m_lower_arms[id]; }
 
     /// Get the specified rover driveshaft.
-    std::shared_ptr<ChShaft> GetDriveshaft(WheelID id) const { return m_drive_shafts[id]; }
+    std::shared_ptr<ChShaft> GetDriveshaft(ViperWheelID id) const { return m_drive_shafts[id]; }
 
     /// Get chassis position.
     ChVector<> GetChassisPos() const { return m_chassis->GetPos(); }
@@ -247,25 +261,25 @@ class CH_MODELS_API Viper {
     ChVector<> GetChassisAcc() const { return m_chassis->GetLinAcc(); }
 
     /// Get wheel speed.
-    ChVector<> GetWheelLinVel(WheelID id) const { return m_wheels[id]->GetLinVel(); }
+    ChVector<> GetWheelLinVel(ViperWheelID id) const { return m_wheels[id]->GetLinVel(); }
 
     /// Get wheel angular velocity.
-    ChVector<> GetWheelAngVel(WheelID id) const { return m_wheels[id]->GetAngVel(); }
+    ChVector<> GetWheelAngVel(ViperWheelID id) const { return m_wheels[id]->GetAngVel(); }
 
     /// Get wheel contact force.
-    ChVector<> GetWheelContactForce(WheelID id) const;
+    ChVector<> GetWheelContactForce(ViperWheelID id) const;
 
     /// Get wheel contact torque.
-    ChVector<> GetWheelContactTorque(WheelID id) const;
+    ChVector<> GetWheelContactTorque(ViperWheelID id) const;
 
     /// Get wheel total applied force.
-    ChVector<> GetWheelAppliedForce(WheelID id) const;
+    ChVector<> GetWheelAppliedForce(ViperWheelID id) const;
 
     /// Get wheel tractive torque - if DC control set to off
-    double GetWheelTracTorque(WheelID id) const;
+    double GetWheelTracTorque(ViperWheelID id) const;
 
     /// Get wheel total applied torque.
-    ChVector<> GetWheelAppliedTorque(WheelID id) const;
+    ChVector<> GetWheelAppliedTorque(ViperWheelID id) const;
 
     /// Get total rover mass.
     double GetRoverMass() const;
@@ -275,20 +289,17 @@ class CH_MODELS_API Viper {
 
     /// Get drive motor function.
     /// This will return an empty pointer if the associated driver uses torque control.
-    std::shared_ptr<ChFunction_Setpoint> GetDriveMotorFunc(WheelID id) { return m_drive_motor_funcs[id]; }
+    std::shared_ptr<ChFunction_Setpoint> GetDriveMotorFunc(ViperWheelID id) const { return m_drive_motor_funcs[id]; }
 
     /// Get steer motor function.
-    std::shared_ptr<ChFunction_Const> GetSteerMotorFunc(WheelID id) { return m_steer_motor_funcs[id]; }
+    std::shared_ptr<ChFunction_Const> GetSteerMotorFunc(ViperWheelID id) const { return m_steer_motor_funcs[id]; }
 
     /// Get drive motor.
     /// This will return an empty pointer if the associated driver uses torque control.
-    std::shared_ptr<ChLinkMotorRotationSpeed> GetDriveMotor(WheelID id) { return m_drive_motors[id]; }
+    std::shared_ptr<ChLinkMotorRotation> GetDriveMotor(ViperWheelID id) const { return m_drive_motors[id]; }
 
     /// Get steer motor.
-    std::shared_ptr<ChLinkMotorRotationSpeed> GetSteerMotor(WheelID id) { return m_steer_motors[id]; }
-
-    /// Get Viper turning angle.
-    double GetTurnAngle() const;
+    std::shared_ptr<ChLinkMotorRotation> GetSteerMotor(ViperWheelID id) const { return m_steer_motors[id]; }
 
     /// Viper update function.
     /// This function must be called before each integration step.
@@ -296,7 +307,7 @@ class CH_MODELS_API Viper {
 
   private:
     /// Create the rover parts.
-    void Create(WheelType wheel_type);
+    void Create(ViperWheelType wheel_type);
 
     ChSystem* m_system;  ///< pointer to the Chrono system
 
@@ -309,9 +320,9 @@ class CH_MODELS_API Viper {
     std::array<std::shared_ptr<ViperUpright>, 4> m_uprights;     ///< rover steering stand (LF, RF, LR, RB)
     std::array<std::shared_ptr<ChBody>, 4> m_steering_rods;      ///< rover steering rod (LF, RF, LR, RB)
 
-    std::array<std::shared_ptr<ChLinkMotorRotationSpeed>, 4> m_drive_motors;  ///< drive motors
-    std::array<std::shared_ptr<ChLinkMotorRotationSpeed>, 4> m_steer_motors;  ///< steering motors
-    std::array<std::shared_ptr<ChLinkMotorRotationSpeed>, 8> m_lift_motors;   ///< lifting motors
+    std::array<std::shared_ptr<ChLinkMotorRotation>, 4> m_drive_motors;  ///< drive motors
+    std::array<std::shared_ptr<ChLinkMotorRotation>, 4> m_steer_motors;  ///< steering motors
+    std::array<std::shared_ptr<ChLinkMotorRotation>, 4> m_lift_motors;   ///< lifting motors
 
     std::array<std::shared_ptr<ChFunction_Setpoint>, 4> m_drive_motor_funcs;  ///< drive motor functions
     std::array<std::shared_ptr<ChFunction_Const>, 4> m_steer_motor_funcs;     ///< steering motor functions
@@ -326,7 +337,6 @@ class CH_MODELS_API Viper {
     std::shared_ptr<ChMaterialSurface> m_wheel_material;    ///< wheel contact material (shared across limbs)
 
     static const double m_max_steer_angle;  ///< maximum steering angle
-    static const double m_max_steer_speed;  ///< maximum steering speed
 
     friend class ViperDCMotorControl;
 };
@@ -339,25 +349,40 @@ class CH_MODELS_API Viper {
 /// (such as applying torques to the wheel driveshafts).
 class CH_MODELS_API ViperDriver {
   public:
+    /// Type of drive motor control.
+    enum class DriveMotorType {
+        SPEED,  ///< angular speed
+        TORQUE  ///< torque
+    };
     virtual ~ViperDriver() {}
 
-    /// Indicate if driver controls driveshafts through applied torque.
-    virtual bool TorqueControl() { return false; }
+    /// Indicate the control type for the drive motors.
+    virtual DriveMotorType GetDriveMotorType() const = 0;
 
-    /// Set the current rover driver inputs.
-    /// This function is called by the associated Viper at each rover Update. A derived class must update the values for
-    /// the angular speeds for the drive motors, the steering motors, and the lift motors at the specified time. A
-    /// positive steering input corresponds to a left turn and a negative value to a right turn.
-    virtual void Update(double time) = 0;
+    /// Set current steering input (angle: negative for left, positive for right).
+    void SetSteering(double angle);
+
+    /// Set current steering input (angle: negative for left turn, positive for right turn).
+    /// This function sets the steering angle for the specified wheel.
+    void SetSteering(double angle, ViperWheelID id);
+
+    /// Set current lift input angle.
+    void SetLifting(double angle);
 
   protected:
     ViperDriver();
 
+    /// Set the current rover driver inputs.
+    /// This function is called by the associated Viper at each rover Update. A derived class must update the values for
+    /// the angular speeds for the drive motors, as well as the angles for the steering motors and the lift motors at
+    /// the specified time. A positive steering input corresponds to a left turn and a negative value to a right turn.
+    virtual void Update(double time) = 0;
+
     Viper* viper;  ///< associated Viper rover
 
     std::array<double, 4> drive_speeds;  ///< angular speeds for drive motors
-    std::array<double, 4> steer_speeds;  ///< angular speeds for steer motors
-    std::array<double, 4> lift_speeds;   ///< angular speeds for lift motors
+    std::array<double, 4> steer_angles;  ///< angles for steer motors
+    std::array<double, 4> lift_angles;   ///< angles for lift motors
 
     friend class Viper;
 };
@@ -371,27 +396,37 @@ class CH_MODELS_API ViperDCMotorControl : public ViperDriver {
     ~ViperDCMotorControl() {}
 
     /// Set motor stall torque for the specified wheel (default: 300).
-    void SetMotorStallTorque(double torque, WheelID id) { m_stall_torque[id] = torque; }
+    void SetMotorStallTorque(double torque, ViperWheelID id) { m_stall_torque[id] = torque; }
 
     /// Set DC motor no load speed (default: pi).
-    void SetMotorNoLoadSpeed(double speed, WheelID id) { m_no_load_speed[id] = speed; }
-
-    /// Set current steering input (angular speed: negative for left, positive for right).
-    void SetSteering(double speed);
-
-    /// Set current lift input (angular speed).
-    void SetLift(double speed);
+    void SetMotorNoLoadSpeed(double speed, ViperWheelID id) { m_no_load_speed[id] = speed; }
 
   private:
-    virtual bool TorqueControl() override { return true; }
+    virtual DriveMotorType GetDriveMotorType() const override { return DriveMotorType::TORQUE; }
     virtual void Update(double time) override;
 
     std::array<double, 4> m_stall_torque;   ///< stall torque of the motors
     std::array<double, 4> m_no_load_speed;  ///< no load speed of the motors
 };
 
+/// Concrete Viper speed driver.
+/// This driver applies the same angular speed (ramped from 0 to a prescribed value) to all wheels.
+class CH_MODELS_API ViperSpeedDriver : public ViperDriver {
+  public:
+    ViperSpeedDriver(double time_ramp, double speed);
+    ~ViperSpeedDriver() {}
+
+  private:
+    virtual DriveMotorType GetDriveMotorType() const override { return DriveMotorType::SPEED; }
+    virtual void Update(double time) override;
+
+    double m_ramp;
+    double m_speed;
+};
+
 /// @} robot_models_viper
 
 }  // namespace viper
 }  // namespace chrono
+
 #endif

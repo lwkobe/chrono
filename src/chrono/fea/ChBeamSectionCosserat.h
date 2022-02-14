@@ -468,14 +468,15 @@ class ChApi ChElasticityCosseratAdvancedGeneric : public ChElasticityCosserat {
         ) override;
 };
 
-// Add by PENG Chao
+/// A Cosserat section which allows to input the material fully-populated stiffness matrix(FPM) of cross-section
+/// directly.
 class ChApi ChElasticityCosseratAdvancedGenericFPM : public ChElasticityCosserat {
   public:
     ChElasticityCosseratAdvancedGenericFPM()
         : Klaw(ChMatrixNM<double, 6, 6>::Identity(6, 6)), alpha(0), Cy(0), Cz(0), beta(0), Sy(0), Sz(0) {}
 
     ChElasticityCosseratAdvancedGenericFPM(
-        const ChMatrixNM<double, 6, 6> mKlaw,  ///< 6x6 material stiffness matrix of cross-section
+        const ChMatrixNM<double, 6, 6> mKlaw,  ///< 6x6 material fully-populated stiffness matrix(FPM) of cross-section
         const double malpha,                   ///< rotation of reference at elastic center, for bending effects [rad]
         const double mCy,                      ///< elastic center y displacement respect to centerline
         const double mCz,                      ///< elastic center z displacement respect to centerline
@@ -487,13 +488,15 @@ class ChApi ChElasticityCosseratAdvancedGenericFPM : public ChElasticityCosserat
 
     virtual ~ChElasticityCosseratAdvancedGenericFPM() {}
 
-    virtual void SetEMatrix(const ChMatrixNM<double, 6, 6> mKlaw) { Klaw = mKlaw; }
-
+    /// Set the FPM section & material of beam element, giving the stiffness FPM directly.
+    virtual void SetEMatrix(const ChMatrixNM<double, 6, 6>& mKlaw) { Klaw = mKlaw; }
+    /// Get the stiffness FPM of section & material of beam element.
     virtual ChMatrixNM<double, 6, 6>& GetEMatrix() { return Klaw; }
 
     /// Set the rotation in [rad]  of the Y Z axes for which the
     /// YbendingRigidity and ZbendingRigidity values are defined.
     void SetSectionRotation(double ma) { this->alpha = ma; }
+    /// Get the rotation in [rad]  of the Y Z axes
     double GetSectionRotation() { return this->alpha; }
 
     /// "Elastic reference": set the displacement of the elastic center
@@ -522,10 +525,13 @@ class ChApi ChElasticityCosseratAdvancedGenericFPM : public ChElasticityCosserat
     double GetShearCenterY() { return this->Sy; }
     double GetShearCenterZ() { return this->Sz; }
 
-    // Need to update the material stiffness matrix Klaw
-    // after input section rotation and elastic center/shear center offset.
-    // This should be called by end user.
+    /// Need to update the material stiffness matrix Klaw
+    /// after input section rotation and elastic center/shear center offset.
+    /// This should be called by end user.
     void UpdateEMatrix();
+
+    /// Get the tranformation matrix of seciton, may be useful for debug
+    virtual ChMatrixNM<double, 6, 6>& GetTransformMatrix() { return this->T; }
 
     // Interface to base:
 
@@ -556,6 +562,7 @@ class ChApi ChElasticityCosseratAdvancedGenericFPM : public ChElasticityCosserat
     double Sz;
 
     ChMatrixNM<double, 6, 6> T;
+    bool updated = false;
 
   public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
@@ -1169,30 +1176,30 @@ using ChInertiaCosseratUniformDensity = ChInertiaCosseratSimple;
 
 class ChApi ChInertiaCosseratAdvanced : public ChInertiaCosserat {
   public:
-    ChInertiaCosseratAdvanced() : mu(1), cm_y(0), cm_z(0), Jzz(1), Jyy(1), Jyz(0){};
+    ChInertiaCosseratAdvanced() : mu(1), cm_y(0), cm_z(0), Jzz(1), Jyy(1), Jyz(0) {}
+
+    ChInertiaCosseratAdvanced(
+        double mu_density,  ///< mass per unit length [kg/m]
+        double c_y,         ///< displacement of center of mass along Y
+        double c_z,         ///< displacement of center of mass along Z
+        double Jyy_moment,  ///< moment of inertia per unit length, about Y. Jyy=Mm(4,4)
+        double Jzz_moment,  ///< moment of inertia per unit length, about Z. Jzz=Mm(5,5)
+        double Jyz_moment   ///< moment of inertia per unit length, about YZ (off diagonal term). Jyz=-Mm(4,5)=-Mm(5,4)
+        )
+        : mu(mu_density), cm_y(c_y), cm_z(c_z), Jzz(Jzz_moment), Jyy(Jyy_moment), Jyz(Jyz_moment) {}
 
     ChInertiaCosseratAdvanced(double mu_density,  ///< mass per unit length [kg/m]
                               double c_y,         ///< displacement of center of mass along Y
                               double c_z,         ///< displacement of center of mass along Z
-                              double Jyy_moment,  ///< moment of inertia per unit length, about Y. Also Jyy= Mm(4,4)
-                              double Jzz_moment,  ///< moment of inertia per unit length, about Z. Also Jzz= Mm(5,5)
-                              double Jyz_moment   ///< moment of inertia per unit length, about YZ (off diagonal term).
-                                                  ///< Also Jyz= -Mm(4,5) = -Mm(5,4)
+                              ChVector<> Ivals    ///< moments of inertia
                               )
-        : mu(mu_density), cm_y(c_y), cm_z(c_z), Jzz(Jzz_moment), Jyy(Jyy_moment), Jyz(Jyz_moment){};
-
-    ChInertiaCosseratAdvanced(double mu_density,  ///< mass per unit length [kg/m]
-                              double c_y,         ///< displacement of center of mass along Y
-                              double c_z,         ///< displacement of center of mass along Z
-                              ChVector<> Ivals)
-        : mu(mu_density), cm_y(c_y), cm_z(c_z), Jzz(Ivals.y()), Jyy(Ivals.x()), Jyz(Ivals.z()){};
+        : mu(mu_density), cm_y(c_y), cm_z(c_z), Jzz(Ivals.y()), Jyy(Ivals.x()), Jyz(Ivals.z()) {}
 
     virtual ~ChInertiaCosseratAdvanced() {}
 
-    /// Compute the 6x6 sectional inertia matrix, as in  {x_momentum,w_momentum}=[Mi]{xvel,wvel}
-    /// The matrix is computed in the material reference..
-    virtual void ComputeInertiaMatrix(ChMatrixNM<double, 6, 6>& M  ///< 6x6 sectional mass matrix values here
-                                      ) override;
+    /// Compute the 6x6 sectional inertia matrix, as in {x_momentum,w_momentum}=[Mi]{xvel,wvel}
+    /// The matrix is computed in the material reference.
+    virtual void ComputeInertiaMatrix(ChMatrixNM<double, 6, 6>& M) override;
 
     /// Compute the 6x6 sectional inertia damping matrix [Ri] (gyroscopic matrix damping), as in linearization
     ///  dFi=[Mi]*d{xacc,wacc}+[Ri]*d{xvel,wvel}+[Ki]*d{pos,rot}

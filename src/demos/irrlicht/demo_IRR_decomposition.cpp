@@ -138,7 +138,7 @@ void SaveHullsWavefront(ChIrrAppInterface* application, const char* filename) {
     try {
         ChStreamOutAsciiFile decomposed_objfile(filename);
         mydecompositionHACDv2.WriteConvexHullsAsWavefrontObj(decomposed_objfile);
-    } catch (const ChException &myex) {
+    } catch (const ChException&) {
         application->GetIGUIEnvironment()->addMessageBox(L"Save file error", L"Impossible to write into file.");
     }
 }
@@ -150,7 +150,7 @@ void SaveHullsChulls(ChIrrAppInterface* application, const char* filename) {
     try {
         ChStreamOutAsciiFile decomposed_objfile(filename);
         mydecompositionHACDv2.WriteConvexHullsAsChullsFile(decomposed_objfile);
-    } catch (const ChException &myex) {
+    } catch (const ChException&) {
         application->GetIGUIEnvironment()->addMessageBox(L"Save file error", L"Impossible to write into file.");
     }
 }
@@ -387,10 +387,11 @@ int main(int argc, char* argv[]) {
     // Create the Irrlicht visualization (open the Irrlicht device,
     // bind a simple user interface, etc. etc.)
     ChIrrApp application(&my_system, L"Convex decomposition of a mesh", core::dimension2d<u32>(800, 600));
-    //application.AddTypicalLogo();
-    application.AddTypicalSky();
-    application.AddTypicalLights(core::vector3df(30, 100, 30), core::vector3df(30, -80, -30), 200, 130);
-    application.AddTypicalCamera(core::vector3df(0, 1.5, -2));
+    //application.AddLogo();
+    application.AddSkyBox();
+    application.AddLight(irr::core::vector3df(30, 100, 30), 200, irr::video::SColorf(0.7f, 0.7f, 0.7f, 1.0f));
+    application.AddLight(irr::core::vector3df(30, -80, -30), 130, irr::video::SColorf(0.7f, 0.8f, 0.8f, 1.0f));
+    application.AddCamera(core::vector3df(0, 1.5, -2));
 
     // Initial settings
     modelMesh = 0;

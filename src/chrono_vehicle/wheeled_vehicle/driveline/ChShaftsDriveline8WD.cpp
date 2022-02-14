@@ -34,6 +34,28 @@ namespace vehicle {
 ChShaftsDriveline8WD::ChShaftsDriveline8WD(const std::string& name)
     : ChDrivelineWV(name), m_dir_motor_block(ChVector<>(1, 0, 0)), m_dir_axle(ChVector<>(0, 1, 0)) {}
 
+ChShaftsDriveline8WD::~ChShaftsDriveline8WD() {
+    auto sys = m_central_differential->GetSystem();
+    if (sys) {
+        sys->Remove(m_central_differential);
+        sys->Remove(m_central_clutch);
+
+        for (int i = 0; i < 2; i++) {
+            sys->Remove(m_GD_inshaft[i]);
+            sys->Remove(m_GD_differential[i]);
+            sys->Remove(m_GD_clutch[i]);
+        }
+
+        for (int i = 0; i < 4; i++) {
+            sys->Remove(m_AD_inshaft[i]);
+            sys->Remove(m_AD_conicalgear[i]);
+            sys->Remove(m_AD_differential[i]);
+            sys->Remove(m_AD_differentialbox[i]);
+            sys->Remove(m_AD_clutch[i]);
+        }
+    }
+}
+
 // -----------------------------------------------------------------------------
 // Initialize the driveline subsystem.
 // This function connects this driveline to the specified axles.
@@ -88,12 +110,12 @@ void ChShaftsDriveline8WD::Create(std::shared_ptr<ChChassis> chassis, const ChAx
         // Input shaft
         m_AD_inshaft[i] = chrono_types::make_shared<ChShaft>();
         m_AD_inshaft[i]->SetInertia(GetAxleDiffInputShaftInertia());
-        sys->Add(m_AD_inshaft[i]);
+        sys->AddShaft(m_AD_inshaft[i]);
 
         // Shaft representing inertia of the differential rotating box
         m_AD_differentialbox[i] = chrono_types::make_shared<ChShaft>();
         m_AD_differentialbox[i]->SetInertia(GetAxleDiffBoxInertia());
-        sys->Add(m_AD_differentialbox[i]);
+        sys->AddShaft(m_AD_differentialbox[i]);
 
         // Conical gear
         m_AD_conicalgear[i] = chrono_types::make_shared<ChShaftsGearboxAngled>();
@@ -123,7 +145,7 @@ void ChShaftsDriveline8WD::Create(std::shared_ptr<ChChassis> chassis, const ChAx
         // Input shaft
         m_GD_inshaft[i] = chrono_types::make_shared<ChShaft>();
         m_GD_inshaft[i]->SetInertia(GetGroupDiffInputShaftInertia());
-        sys->Add(m_GD_inshaft[i]);
+        sys->AddShaft(m_GD_inshaft[i]);
 
         // Differential
         m_GD_differential[i] = chrono_types::make_shared<ChShaftsPlanetary>();
@@ -142,7 +164,7 @@ void ChShaftsDriveline8WD::Create(std::shared_ptr<ChChassis> chassis, const ChAx
     // Shaft connecting transmission box to driveline
     m_driveshaft = chrono_types::make_shared<ChShaft>();
     m_driveshaft->SetInertia(GetDriveshaftInertia());
-    sys->Add(m_driveshaft);
+    sys->AddShaft(m_driveshaft);
 
     // Central differential
     m_central_differential = chrono_types::make_shared<ChShaftsPlanetary>();
@@ -209,6 +231,14 @@ double ChShaftsDriveline8WD::GetSpindleTorque(int axle, VehicleSide side) const 
     }
 
     return 0;
+}
+
+// -----------------------------------------------------------------------------
+void ChShaftsDriveline8WD::Disconnect() {
+    for (int i = 0; i < 4; i++) {
+        m_AD_differential[i]->SetDisabled(true);
+        m_AD_clutch[i]->SetDisabled(true);
+    }
 }
 
 }  // end namespace vehicle

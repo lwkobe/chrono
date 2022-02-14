@@ -53,6 +53,18 @@ const std::string ChLeafspringAxle::m_pointNames[] = {"SHOCK_A    ", "SHOCK_C   
 // -----------------------------------------------------------------------------
 ChLeafspringAxle::ChLeafspringAxle(const std::string& name) : ChSuspension(name) {}
 
+ChLeafspringAxle::~ChLeafspringAxle() {
+    auto sys = m_axleTube->GetSystem();
+    if (sys) {
+        sys->Remove(m_axleTube);
+        sys->Remove(m_axleTubeGuide);
+        for (int i = 0; i < 2; i++) {
+            sys->Remove(m_shock[i]);
+            sys->Remove(m_spring[i]);
+        }
+    }
+}
+
 // -----------------------------------------------------------------------------
 // -----------------------------------------------------------------------------
 void ChLeafspringAxle::Initialize(std::shared_ptr<ChChassis> chassis,
@@ -164,8 +176,8 @@ void ChLeafspringAxle::InitializeSide(VehicleSide side,
     // Create and initialize the spring
     m_spring[side] = chrono_types::make_shared<ChLinkTSDA>();
     m_spring[side]->SetNameString(m_name + "_spring" + suffix);
-    m_spring[side]->Initialize(scbeam, m_axleTube, false, points[SPRING_C], points[SPRING_A], false,
-                               getSpringRestLength());
+    m_spring[side]->Initialize(scbeam, m_axleTube, false, points[SPRING_C], points[SPRING_A]);
+    m_spring[side]->SetRestLength(getSpringRestLength());
     m_spring[side]->RegisterForceFunctor(getSpringForceFunctor());
     chassis->GetSystem()->AddLink(m_spring[side]);
 
@@ -175,7 +187,7 @@ void ChLeafspringAxle::InitializeSide(VehicleSide side,
     m_axle[side]->SetNameString(m_name + "_axle" + suffix);
     m_axle[side]->SetInertia(getAxleInertia());
     m_axle[side]->SetPos_dt(-ang_vel);
-    chassis->GetSystem()->Add(m_axle[side]);
+    chassis->GetSystem()->AddShaft(m_axle[side]);
 
     m_axle_to_spindle[side] = chrono_types::make_shared<ChShaftsBody>();
     m_axle_to_spindle[side]->SetNameString(m_name + "_axle_to_spindle" + suffix);
@@ -243,12 +255,9 @@ void ChLeafspringAxle::LogHardpointLocations(const ChVector<>& ref, bool inches)
 // -----------------------------------------------------------------------------
 // -----------------------------------------------------------------------------
 void ChLeafspringAxle::LogConstraintViolations(VehicleSide side) {
-    // TODO: Update this to reflect new suspension joints
-    // Revolute joints
-
     {
-        ChVectorDynamic<> C = m_sphericalTierod->GetC();
-        GetLog() << "Tierod spherical          ";
+        ChVectorDynamic<> C = m_axleTubeGuide->GetConstraintViolation();
+        GetLog() << "Axle tube prismatic       ";
         GetLog() << "  " << C(0) << "  ";
         GetLog() << "  " << C(1) << "  ";
         GetLog() << "  " << C(2) << "\n";

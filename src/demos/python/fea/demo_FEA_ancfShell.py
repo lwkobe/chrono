@@ -46,10 +46,10 @@ my_system.Set_G_acc(chrono.ChVectorD(0, 0, -9.8))
 application = chronoirr.ChIrrApp(my_system, "ANCF Shells", chronoirr.dimension2du(800, 600))
 
 # Easy shortcuts to add camera, lights, logo and sky in Irrlicht scene:
-application.AddTypicalLogo()
-application.AddTypicalSky()
+application.AddLogo()
+application.AddSkyBox()
 application.AddTypicalLights()
-application.AddTypicalCamera(chronoirr.vector3df(-0.4, -0.3, 0.0),  # camera location
+application.AddCamera(chronoirr.vector3df(-0.4, -0.3, 0.0),  # camera location
                              chronoirr.vector3df(0.0, 0.5, -0.1))  # "look at" location
 
 print( "-----------------------------------------------------------\n")
@@ -123,7 +123,7 @@ for i in range(TotalNumElements):
     node3 = (i // numDiv_x) * N_x + i % numDiv_x + N_x
 
     # Create the element and set its nodes.
-    element = fea.ChElementShellANCF()
+    element = fea.ChElementShellANCF_3423()
     element.SetNodes(CastNode(my_mesh.GetNode(node0)),
                       CastNode(my_mesh.GetNode(node1)),
                       CastNode(my_mesh.GetNode(node2)),
@@ -137,7 +137,6 @@ for i in range(TotalNumElements):
 
     # Set other element properties
     element.SetAlphaDamp(0.0)    # Structural damping for this element
-    element.SetGravityOn(False)  # turn internal gravitational force calculation off
     
     # Add element to mesh
     my_mesh.AddElement(element)

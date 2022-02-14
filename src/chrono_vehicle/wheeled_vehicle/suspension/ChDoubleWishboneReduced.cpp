@@ -36,7 +36,21 @@ namespace vehicle {
 
 // -----------------------------------------------------------------------------
 // -----------------------------------------------------------------------------
-ChDoubleWishboneReduced::ChDoubleWishboneReduced(const std::string& name) : ChSuspension(name) {
+ChDoubleWishboneReduced::ChDoubleWishboneReduced(const std::string& name) : ChSuspension(name) {}
+
+ChDoubleWishboneReduced::~ChDoubleWishboneReduced() {
+    auto sys = m_upright[0]->GetSystem();
+    if (sys) {
+        for (int i = 0; i < 2; i++) {
+            sys->Remove(m_upright[i]);
+            sys->Remove(m_distUCA_F[i]);
+            sys->Remove(m_distUCA_B[i]);
+            sys->Remove(m_distLCA_F[i]);
+            sys->Remove(m_distLCA_B[i]);
+            sys->Remove(m_distTierod[i]);
+            sys->Remove(m_shock[i]);
+        }
+    }
 }
 
 // -----------------------------------------------------------------------------
@@ -145,7 +159,7 @@ void ChDoubleWishboneReduced::InitializeSide(VehicleSide side,
     m_axle[side]->SetNameString(m_name + "_axle" + suffix);
     m_axle[side]->SetInertia(getAxleInertia());
     m_axle[side]->SetPos_dt(-ang_vel);
-    chassis->GetSystem()->Add(m_axle[side]);
+    chassis->GetSystem()->AddShaft(m_axle[side]);
 
     m_axle_to_spindle[side] = chrono_types::make_shared<ChShaftsBody>();
     m_axle_to_spindle[side]->SetNameString(m_name + "_axle_to_spindle" + suffix);
@@ -321,7 +335,7 @@ void ChDoubleWishboneReduced::AddVisualizationUpright(std::shared_ptr<ChBody> up
 void ChDoubleWishboneReduced::LogConstraintViolations(VehicleSide side) {
     // Revolute joint
     {
-        ChVectorDynamic<> C = m_revolute[side]->GetC();
+        ChVectorDynamic<> C = m_revolute[side]->GetConstraintViolation();
         GetLog() << "Spindle revolute      ";
         GetLog() << "  " << C(0) << "  ";
         GetLog() << "  " << C(1) << "  ";

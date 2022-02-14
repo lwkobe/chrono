@@ -42,6 +42,14 @@ namespace vehicle {
 // -----------------------------------------------------------------------------
 ChRigidPinnedAxle::ChRigidPinnedAxle(const std::string& name) : ChSuspension(name) {}
 
+ChRigidPinnedAxle::~ChRigidPinnedAxle() {
+    auto sys = m_axleTube->GetSystem();
+    if (sys) {
+        sys->Remove(m_axleTube);
+        sys->Remove(m_axlePin);
+    }
+}
+
 // -----------------------------------------------------------------------------
 // -----------------------------------------------------------------------------
 void ChRigidPinnedAxle::Initialize(std::shared_ptr<ChChassis> chassis,
@@ -122,7 +130,7 @@ void ChRigidPinnedAxle::InitializeSide(VehicleSide side,
     m_axle[side]->SetNameString(m_name + "_axle" + suffix);
     m_axle[side]->SetInertia(getAxleInertia());
     m_axle[side]->SetPos_dt(-ang_vel);
-    chassis->GetSystem()->Add(m_axle[side]);
+    chassis->GetSystem()->AddShaft(m_axle[side]);
 
     m_axle_to_spindle[side] = chrono_types::make_shared<ChShaftsBody>();
     m_axle_to_spindle[side]->SetNameString(m_name + "_axle_to_spindle" + suffix);
@@ -171,7 +179,7 @@ ChSuspension::Force ChRigidPinnedAxle::ReportSuspensionForce(VehicleSide side) c
 void ChRigidPinnedAxle::LogConstraintViolations(VehicleSide side) {
     // Revolute joint
     {
-        ChVectorDynamic<> C = m_revolute[side]->GetC();
+        ChVectorDynamic<> C = m_revolute[side]->GetConstraintViolation();
         GetLog() << "Spindle revolute      ";
         GetLog() << "  " << C(0) << "  ";
         GetLog() << "  " << C(1) << "  ";

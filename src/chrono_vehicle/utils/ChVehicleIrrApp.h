@@ -33,6 +33,7 @@
 #include "chrono_vehicle/ChApiVehicle.h"
 #include "chrono_vehicle/ChVehicle.h"
 #include "chrono_vehicle/ChDriver.h"
+#include "chrono_vehicle/ChConfigVehicle.h"
 
 #ifdef CHRONO_IRRKLANG
 #include <irrKlang.h>
@@ -56,18 +57,15 @@ class ChCameraEventReceiver;  ///< custom event receiver for chase-cam control
 class CH_VEHICLE_API ChVehicleIrrApp : public irrlicht::ChIrrApp {
   public:
     /// Construct a vehicle Irrlicht application.
-    ChVehicleIrrApp(ChVehicle* vehicle,                              ///< pointer to the associated vehicle system
+    ChVehicleIrrApp(ChVehicle* vehicle,                              ///< associated vehicle system
                     const std::wstring& title = L"Chrono::Vehicle",  ///< window title
                     const irr::core::dimension2d<irr::u32>& dims =
-                        irr::core::dimension2d<irr::u32>(1000, 800),  ///< window dimensions
-                    irr::ELOG_LEVEL log_level = irr::ELL_INFORMATION  ///< Irrlicht logging level
+                        irr::core::dimension2d<irr::u32>(1000, 800),        ///< window dimensions
+                    irrlicht::VerticalDir vert = irrlicht::VerticalDir::Z,  ///< vertical camera direction
+                    irr::ELOG_LEVEL log_level = irr::ELL_INFORMATION        ///< Irrlicht logging level
     );
 
     virtual ~ChVehicleIrrApp();
-
-    /// Create a skybox that has Z pointing up.
-    /// Note that the default ChIrrApp::AddTypicalSky() uses Y up.
-    void SetSkyBox();
 
     /// Set parameters for the underlying chase camera.
     void SetChaseCamera(const ChVector<>& ptOnChassis,  ///< tracked point on chassis body (in vehicle reference frame)
@@ -105,8 +103,8 @@ class CH_VEHICLE_API ChVehicleIrrApp : public irrlicht::ChIrrApp {
     /// Render a horizontal grid at the specified location.
     void RenderGrid(const ChVector<>& loc, int num_divs, double delta);
 
-    /// Render a reference frame (aligned with the world frame) at the specified location.
-    void RenderFrame(const ChVector<>& loc, double axis_length = 1);
+    /// Render the specified reference frame.
+    void RenderFrame(const ChFrame<>& frame, double axis_length = 1);
 
     /// Update information related to driver inputs.
     void Synchronize(const std::string& msg, const ChDriver::Inputs& driver_inputs);

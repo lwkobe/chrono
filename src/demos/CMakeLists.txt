@@ -28,6 +28,7 @@ endif("${isSystemDir}" STREQUAL "-1")
 
 if(APPLE)
     set(CMAKE_MACOSX_BUNDLE ON)
+    set(MACOSX_BUNDLE_INFO_PLIST "${PROJECT_SOURCE_DIR}/cmake/MacOSXBundleInfo.plist.in")
 endif()
 
 #--------------------------------------------------------------
@@ -171,5 +172,13 @@ if(ENABLE_MODULE_SYNCHRONO)
  	mark_as_advanced(FORCE BUILD_DEMOS_SYNCHRONO)
 	if(BUILD_DEMOS_SYNCHRONO)
   		add_subdirectory(synchrono)
+  	endif()
+endif()
+
+if(ENABLE_MODULE_MODAL)
+ 	option(BUILD_DEMOS_MODAL "Build demo programs for Modal module" TRUE)
+ 	mark_as_advanced(FORCE BUILD_DEMOS_MODAL)
+	if(BUILD_DEMOS_MODAL)
+  		add_subdirectory(modal)
   	endif()
 endif()

@@ -34,6 +34,31 @@ namespace vehicle {
 // -----------------------------------------------------------------------------
 ChTrackShoeDoublePin::ChTrackShoeDoublePin(const std::string& name) : ChTrackShoeSegmented(name) {}
 
+ChTrackShoeDoublePin::~ChTrackShoeDoublePin() {
+    if (!m_shoe)
+        return;
+
+    auto sys = m_shoe->GetSystem();
+    if (sys) {
+        sys->Remove(m_connector_L);
+        sys->Remove(m_connector_R);
+
+        ChChassis::RemoveJoint(m_revolute_L);
+        ChChassis::RemoveJoint(m_revolute_R);
+        if (m_rsda_L) {
+            sys->Remove(m_rsda_L);
+            sys->Remove(m_rsda_R);
+        }
+
+        ChChassis::RemoveJoint(m_connection_joint_L);
+        ChChassis::RemoveJoint(m_connection_joint_R);
+        if (m_connection_rsda_L) {
+            sys->Remove(m_connection_rsda_L);
+            sys->Remove(m_connection_rsda_R);
+        }
+    }
+}
+
 // -----------------------------------------------------------------------------
 // -----------------------------------------------------------------------------
 void ChTrackShoeDoublePin::Initialize(std::shared_ptr<ChBodyAuxRef> chassis,
@@ -164,99 +189,127 @@ void ChTrackShoeDoublePin::AddConnectorVisualization(std::shared_ptr<ChBody> con
 
 // -----------------------------------------------------------------------------
 // -----------------------------------------------------------------------------
-void ChTrackShoeDoublePin::Connect(std::shared_ptr<ChTrackShoe> next, ChTrackAssembly* assembly, bool ccw) {
+void ChTrackShoeDoublePin::Connect(std::shared_ptr<ChTrackShoe> next,
+                                   ChTrackAssembly* assembly,
+                                   ChChassis* chassis,
+                                   bool ccw) {
     auto track = static_cast<ChTrackAssemblyDoublePin*>(assembly);
     ChSystem* system = m_shoe->GetSystem();
     double sign = ccw ? +1 : -1;
 
-    bool add_RSDA = (track->GetConnectionType() == ChTrackAssemblySegmented::ConnectionType::RSDA_JOINT);
-    assert(!add_RSDA || track->GetTorqueFunctor());
+    ChVector<> pShoe_L;     // local point on shoe (left)
+    ChVector<> pShoe_R;     // local point on shoe (right)
+    ChVector<> pConnector;  // local point on connector
 
-    // Create and initialize the revolute joints between shoe body and connector bodies.
-    ChVector<> loc_L =
-        m_shoe->TransformPointLocalToParent(ChVector<>(sign * GetShoeLength() / 2, +GetShoeWidth() / 2, 0));
-    ChVector<> loc_R =
-        m_shoe->TransformPointLocalToParent(ChVector<>(sign * GetShoeLength() / 2, -GetShoeWidth() / 2, 0));
-    ChQuaternion<> rot = m_shoe->GetRot() * Q_from_AngX(CH_C_PI_2);
+    ChVector<> loc_L;    // left point (expressed in absolute frame)
+    ChVector<> loc_R;    // right point (expressed in absolute frame)
+    ChQuaternion<> rot;  // orientation (expressed in absolute frame)
 
-    m_revolute_L = chrono_types::make_shared<ChLinkLockRevolute>();
-    m_revolute_L->SetNameString(m_name + "_rev_L");
-    m_revolute_L->Initialize(m_shoe, m_connector_L, ChCoordsys<>(loc_L, rot));
-    system->AddLink(m_revolute_L);
+    // 1. Connections between this shoe body and connector bodies
 
-    m_revolute_R = chrono_types::make_shared<ChLinkLockRevolute>();
-    m_revolute_R->SetNameString(m_name + "_rev_R");
-    m_revolute_R->Initialize(m_shoe, m_connector_R, ChCoordsys<>(loc_R, rot));
-    system->AddLink(m_revolute_R);
+    // Create and initialize the revolute joints/bushings between shoe body and connector bodies.
+    pShoe_L = ChVector<>(sign * GetShoeLength() / 2, +GetShoeWidth() / 2, 0);
+    pShoe_R = ChVector<>(sign * GetShoeLength() / 2, -GetShoeWidth() / 2, 0);
+    pConnector = ChVector<>(-sign * GetConnectorLength() / 2, 0, 0);
 
-    // Optionally, include rotational spring-dampers to model track bending stiffness
-    if (add_RSDA) {
-        auto rsda_L = chrono_types::make_shared<ChLinkRotSpringCB>();
-        rsda_L->SetNameString(m_name + "_rsda_rev_L");
-        rsda_L->Initialize(m_shoe, m_connector_L, false, ChCoordsys<>(loc_L, m_shoe->GetRot()),
-                         ChCoordsys<>(loc_L, m_connector_L->GetRot()));
-        rsda_L->RegisterTorqueFunctor(track->GetTorqueFunctor());
-        system->AddLink(rsda_L);
+    loc_L = m_shoe->TransformPointLocalToParent(pShoe_L);
+    loc_R = m_shoe->TransformPointLocalToParent(pShoe_R);
+    rot = m_shoe->GetRot() * Q_from_AngX(CH_C_PI_2);
 
-        auto rsda_R = chrono_types::make_shared<ChLinkRotSpringCB>();
-        rsda_R->SetNameString(m_name + "_rsda_rev_R");
-        rsda_R->Initialize(m_shoe, m_connector_R, false, ChCoordsys<>(loc_R, m_shoe->GetRot()),
-                           ChCoordsys<>(loc_R, m_connector_R->GetRot()));
-        rsda_R->RegisterTorqueFunctor(track->GetTorqueFunctor());
-        system->AddLink(rsda_R);
+    m_revolute_L =
+        chrono_types::make_shared<ChVehicleJoint>(ChVehicleJoint::Type::REVOLUTE, m_name + "_pin_L", m_shoe,
+                                                  m_connector_L, ChCoordsys<>(loc_L, rot), track->GetBushingData());
+    chassis->AddJoint(m_revolute_L);
+
+    m_revolute_R =
+        chrono_types::make_shared<ChVehicleJoint>(ChVehicleJoint::Type::REVOLUTE, m_name + "_pin_R", m_shoe,
+                                                  m_connector_R, ChCoordsys<>(loc_R, rot), track->GetBushingData());
+    chassis->AddJoint(m_revolute_R);
+
+    // Optionally, include rotational spring-dampers to model track bending stiffness.
+    // The RSDA frames are aligned with the corresponding body frames and the springs have a default zero rest angle.
+    if (track->GetTorqueFunctor()) {
+        ChQuaternion<> z2y = Q_from_AngX(-CH_C_PI_2);
+
+        m_rsda_L = chrono_types::make_shared<ChLinkRSDA>();
+        m_rsda_L->SetNameString(m_name + "_rsda_pin_L");
+        m_rsda_L->Initialize(m_shoe, m_connector_L, true, ChCoordsys<>(pShoe_L, z2y), ChCoordsys<>(pConnector, z2y));
+        m_rsda_L->RegisterTorqueFunctor(track->GetTorqueFunctor());
+        system->AddLink(m_rsda_L);
+
+        m_rsda_R = chrono_types::make_shared<ChLinkRSDA>();
+        m_rsda_R->SetNameString(m_name + "_rsda_pin_R");
+        m_rsda_R->Initialize(m_shoe, m_connector_R, true, ChCoordsys<>(pShoe_R, z2y), ChCoordsys<>(pConnector, z2y));
+        m_rsda_R->RegisterTorqueFunctor(track->GetTorqueFunctor());
+        system->AddLink(m_rsda_R);
     }
 
-    loc_L = m_connector_L->TransformPointLocalToParent(ChVector<>(sign * GetConnectorLength() / 2, 0, 0));
-    loc_R = m_connector_R->TransformPointLocalToParent(ChVector<>(sign * GetConnectorLength() / 2, 0, 0));
+    // 2. Connections between connector bodies and next shoe body
 
-    // Create connections between these connector bodies and the next shoe body
-    if (m_index == -1) {
-        // Create and initialize a point-line joint for left connector (sliding along X axis)
-        rot = m_connector_L->GetRot() * Q_from_AngZ(CH_C_PI_2);
+    pShoe_L = ChVector<>(-sign * GetShoeLength() / 2, +GetShoeWidth() / 2, 0);
+    pShoe_R = ChVector<>(-sign * GetShoeLength() / 2, -GetShoeWidth() / 2, 0);
+    pConnector = ChVector<>(sign * GetConnectorLength() / 2, 0, 0);
 
-        auto pointline_L = chrono_types::make_shared<ChLinkLockPointLine>();
-        pointline_L->SetNameString(m_name + "_pointline_L");
-        pointline_L->Initialize(next->GetShoeBody(), m_connector_L, ChCoordsys<>(loc_L, rot));
-        system->AddLink(pointline_L);
+    loc_L = m_connector_L->TransformPointLocalToParent(pConnector);
+    loc_R = m_connector_R->TransformPointLocalToParent(pConnector);
 
-        // Create and initialize a point-line joint for left connector (sliding along X axis)
-        rot = m_connector_R->GetRot() * Q_from_AngZ(CH_C_PI_2);
+    if (!track->GetBushingData()) {
+        // Connect left connector
+        if (m_index == 0) {
+            // Pointline joint (sliding along X)
+            rot = m_connector_L->GetRot() * Q_from_AngZ(CH_C_PI_2);
+            m_connection_joint_L =
+                chrono_types::make_shared<ChVehicleJoint>(ChVehicleJoint::Type::POINTLINE, m_name + "_cpin_L",
+                                                          m_connector_L, next->GetShoeBody(), ChCoordsys<>(loc_L, rot));
+            chassis->AddJoint(m_connection_joint_L);
+        } else {
+            // Revolute joint
+            rot = m_connector_L->GetRot() * Q_from_AngX(CH_C_PI_2);
+            m_connection_joint_L =
+                chrono_types::make_shared<ChVehicleJoint>(ChVehicleJoint::Type::REVOLUTE, m_name + "_cpin_L",
+                                                          m_connector_L, next->GetShoeBody(), ChCoordsys<>(loc_L, rot));
+            chassis->AddJoint(m_connection_joint_L);
+        }
 
-        auto pointline_R = chrono_types::make_shared<ChLinkLockPointLine>();
-        pointline_R->SetNameString(m_name + "_pointline_R");
-        pointline_R->Initialize(next->GetShoeBody(), m_connector_R, ChCoordsys<>(loc_R, rot));
-        system->AddLink(pointline_R);
+        // Connect right connector through a point-plane joint (normal along Z axis)
+        rot = m_connector_R->GetRot();
+        m_connection_joint_R =
+            chrono_types::make_shared<ChVehicleJoint>(ChVehicleJoint::Type::POINTPLANE, m_name + "_cpin_R",
+                                                      m_connector_R, next->GetShoeBody(), ChCoordsys<>(loc_R, rot));
+        chassis->AddJoint(m_connection_joint_R);
     } else {
-        // Create and initialize a spherical joint for left connector
-        auto sph_L = chrono_types::make_shared<ChLinkLockSpherical>();
-        sph_L->SetNameString(m_name + "_sph_L");
-        sph_L->Initialize(next->GetShoeBody(), m_connector_L, ChCoordsys<>(loc_L));
-        system->AddLink(sph_L);
+        // Create and initialize revolute bushings between connector bodies and next shoe body.
+        rot = m_connector_L->GetRot() * Q_from_AngX(CH_C_PI_2);
+        m_connection_joint_L = chrono_types::make_shared<ChVehicleJoint>(
+            ChVehicleJoint::Type::REVOLUTE, m_name + "_cpin_L", m_connector_L, next->GetShoeBody(),
+            ChCoordsys<>(loc_L, rot), track->GetBushingData());
+        chassis->AddJoint(m_connection_joint_L);
 
-        // Create and initialize a spherical joint for left connector
-        auto sph_R = chrono_types::make_shared<ChLinkLockSpherical>();
-        sph_R->SetNameString(m_name + "_sph_R");
-        sph_R->Initialize(next->GetShoeBody(), m_connector_R, ChCoordsys<>(loc_R));
-        system->AddLink(sph_R);
+        rot = m_connector_R->GetRot() * Q_from_AngX(CH_C_PI_2);
+        m_connection_joint_R = chrono_types::make_shared<ChVehicleJoint>(
+            ChVehicleJoint::Type::REVOLUTE, m_name + "_cpin_R", m_connector_R, next->GetShoeBody(),
+            ChCoordsys<>(loc_R, rot), track->GetBushingData());
+        chassis->AddJoint(m_connection_joint_R);
     }
 
     // Optionally, include rotational spring-dampers to model track bending stiffness
-    if (add_RSDA) {
-        auto rsda_L = chrono_types::make_shared<ChLinkRotSpringCB>();
-        rsda_L->SetNameString(m_name + "_rsda_sph_L");
-        rsda_L->Initialize(next->GetShoeBody(), m_connector_L, false,
-                           ChCoordsys<>(loc_L, next->GetShoeBody()->GetRot()),
-                           ChCoordsys<>(loc_L, m_connector_L->GetRot()));
-        rsda_L->RegisterTorqueFunctor(track->GetTorqueFunctor());
-        system->AddLink(rsda_L);
+    // The RSDA frames are aligned with the corresponding body frames and the springs has a default zero rest angle.
+    if (track->GetTorqueFunctor()) {
+        ChQuaternion<> z2y = Q_from_AngX(-CH_C_PI_2);
 
-        auto rsda_R = chrono_types::make_shared<ChLinkRotSpringCB>();
-        rsda_R->SetNameString(m_name + "_rsda_sph_R");
-        rsda_R->Initialize(next->GetShoeBody(), m_connector_R, false,
-                           ChCoordsys<>(loc_R, next->GetShoeBody()->GetRot()),
-                           ChCoordsys<>(loc_R, m_connector_R->GetRot()));
-        rsda_R->RegisterTorqueFunctor(track->GetTorqueFunctor());
-        system->AddLink(rsda_R);
+        m_connection_rsda_L = chrono_types::make_shared<ChLinkRSDA>();
+        m_connection_rsda_L->SetNameString(m_name + "_rsda_cpin_L");
+        m_connection_rsda_L->Initialize(m_connector_L, next->GetShoeBody(), true, ChCoordsys<>(pConnector, z2y),
+                                        ChCoordsys<>(pShoe_L, z2y));
+        m_connection_rsda_L->RegisterTorqueFunctor(track->GetTorqueFunctor());
+        system->AddLink(m_connection_rsda_L);
+
+        m_connection_rsda_R = chrono_types::make_shared<ChLinkRSDA>();
+        m_connection_rsda_R->SetNameString(m_name + "_rsda_cpin_R");
+        m_connection_rsda_R->Initialize(m_connector_R, next->GetShoeBody(), true, ChCoordsys<>(pConnector, z2y),
+                                        ChCoordsys<>(pShoe_R, z2y));
+        m_connection_rsda_R->RegisterTorqueFunctor(track->GetTorqueFunctor());
+        system->AddLink(m_connection_rsda_R);
     }
 }
 
@@ -272,9 +325,13 @@ void ChTrackShoeDoublePin::ExportComponentList(rapidjson::Document& jsonDocument
     ChPart::ExportBodyList(jsonDocument, bodies);
 
     std::vector<std::shared_ptr<ChLink>> joints;
-    joints.push_back(m_revolute_L);
-    joints.push_back(m_revolute_R);
+    std::vector<std::shared_ptr<ChLoadBodyBody>> bushings;
+    m_revolute_L->IsKinematic() ? joints.push_back(m_revolute_L->GetAsLink())
+                                : bushings.push_back(m_revolute_L->GetAsBushing());
+    m_revolute_R->IsKinematic() ? joints.push_back(m_revolute_R->GetAsLink())
+                                : bushings.push_back(m_revolute_R->GetAsBushing());
     ChPart::ExportJointList(jsonDocument, joints);
+    ChPart::ExportBodyLoadList(jsonDocument, bushings);
 }
 
 void ChTrackShoeDoublePin::Output(ChVehicleOutput& database) const {
@@ -288,9 +345,13 @@ void ChTrackShoeDoublePin::Output(ChVehicleOutput& database) const {
     database.WriteBodies(bodies);
 
     std::vector<std::shared_ptr<ChLink>> joints;
-    joints.push_back(m_revolute_L);
-    joints.push_back(m_revolute_R);
+    std::vector<std::shared_ptr<ChLoadBodyBody>> bushings;
+    m_revolute_L->IsKinematic() ? joints.push_back(m_revolute_L->GetAsLink())
+                                : bushings.push_back(m_revolute_L->GetAsBushing());
+    m_revolute_R->IsKinematic() ? joints.push_back(m_revolute_R->GetAsLink())
+                                : bushings.push_back(m_revolute_R->GetAsBushing());
     database.WriteJoints(joints);
+    database.WriteBodyLoads(bushings);
 }
 
 }  // end namespace vehicle
