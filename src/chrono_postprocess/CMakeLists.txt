@@ -11,23 +11,20 @@ IF(NOT ENABLE_MODULE_POSTPROCESS)
 	RETURN()
 ENDIF()
 
-MESSAGE(STATUS "==== Chrono Postprocess module ====")
+MESSAGE(STATUS "\n==== Chrono Postprocess module ====\n")
 
 #-----------------------------------------------------------------------------
 # LIST THE FILES THAT MAKE THE POSTPROCESS LIBRARY
 
 SET(ChronoEngine_POSTPROCESS_SOURCES 
     ChPovRay.cpp
-    ChPovRayAssetCustom.cpp
 )
 
 SET(ChronoEngine_POSTPROCESS_HEADERS
     ChApiPostProcess.h 
-    ChPovRay.h
-    ChPovRayAsset.h
-    ChPovRayAssetCustom.h
     ChPostProcessBase.h
     ChGnuPlot.h
+    ChPovRay.h
 )
 
 SOURCE_GROUP("" FILES 

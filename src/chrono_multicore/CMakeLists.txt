@@ -21,7 +21,7 @@ if(NOT ENABLE_MODULE_MULTICORE)
   return()
 endif()
 
-message(STATUS "==== Chrono Multicore module ====")
+message(STATUS "\n==== Chrono Multicore module ====\n")
 
 # Return now if Thrust not available
 if (NOT THRUST_FOUND)
@@ -419,6 +419,15 @@ ENDIF()
 # ("unary minus operator applied to unsigned type, result still unsigned")
 if(MSVC)
     target_compile_options(ChronoEngine_multicore PUBLIC "/wd4146" )
+endif()
+
+# Disable all warnings from external code
+if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+  set_source_files_properties(${ChronoEngine_Multicore_COLLISION_BULLET} PROPERTIES COMPILE_OPTIONS "-Wno-everything")
+elseif(MSVC)
+  set_source_files_properties(${ChronoEngine_Multicore_COLLISION_BULLET} PROPERTIES COMPILE_OPTIONS "/w")
+else()
+  set_source_files_properties(${ChronoEngine_Multicore_COLLISION_BULLET} PROPERTIES COMPILE_OPTIONS "-w")
 endif()
 
 SET_TARGET_PROPERTIES(ChronoEngine_multicore PROPERTIES

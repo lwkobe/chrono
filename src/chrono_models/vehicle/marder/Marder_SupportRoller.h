@@ -23,7 +23,7 @@
 
 #include "chrono_vehicle/ChSubsysDefs.h"
 #include "chrono_vehicle/ChVehicleModelData.h"
-#include "chrono_vehicle/tracked_vehicle/roller/ChDoubleRoller.h"
+#include "chrono_vehicle/tracked_vehicle/track_wheel/ChDoubleTrackWheel.h"
 
 #include "chrono_models/ChApiModels.h"
 
@@ -35,7 +35,7 @@ namespace marder {
 /// @{
 
 /// Support roller model for the Marder vehicle (base class).
-class CH_MODELS_API Marder_SupportRoller : public ChDoubleRoller {
+class CH_MODELS_API Marder_SupportRoller : public ChDoubleTrackWheel {
   public:
     virtual ~Marder_SupportRoller() {}
 

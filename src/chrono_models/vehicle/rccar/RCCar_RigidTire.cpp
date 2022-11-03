@@ -51,7 +51,7 @@ const std::string RCCar_RigidTire::m_meshFile_right = "rccar/rccar_tire_left.obj
 // -----------------------------------------------------------------------------
 
 void RCCar_RigidTire::CreateContactMaterial(ChContactMethod contact_method) {
-    MaterialInfo minfo;
+    ChContactMaterialData minfo;
     minfo.mu = 0.9f;
     minfo.cr = 0.1f;
     minfo.Y = 2e7f;
@@ -73,15 +73,8 @@ void RCCar_RigidTire::AddVisualizationAssets(VisualizationType vis) {
 }
 
 void RCCar_RigidTire::RemoveVisualizationAssets() {
+    ChPart::RemoveVisualizationAsset(m_wheel->GetSpindle(), m_trimesh_shape);
     ChRigidTire::RemoveVisualizationAssets();
-
-    // Make sure we only remove the assets added by RCCar_RigidTire::AddVisualizationAssets.
-    // This is important for the ChTire object because a wheel may add its own assets
-    // to the same body (the spindle/wheel).
-    auto& assets = m_wheel->GetSpindle()->GetAssets();
-    auto it = std::find(assets.begin(), assets.end(), m_trimesh_shape);
-    if (it != assets.end())
-        assets.erase(it);
 }
 
 }  // end namespace rccar

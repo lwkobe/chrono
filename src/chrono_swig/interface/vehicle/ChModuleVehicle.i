@@ -37,6 +37,8 @@
 
 #include "chrono/core/ChQuaternion.h"
 #include "chrono/core/ChVector.h"
+#include "chrono/core/ChCoordsys.h"
+#include "chrono/core/ChFrame.h"
 #include "chrono/solver/ChSolver.h"
 
 #include "chrono/physics/ChSystem.h"
@@ -74,6 +76,8 @@
 #include "chrono_vehicle/ChDriver.h"
 #include "chrono_vehicle/ChTerrain.h"
 
+#include "chrono_vehicle/ChVehicleVisualSystem.h"
+
 // Wheeled vehicle
 #include "chrono_vehicle/wheeled_vehicle/ChWheeledVehicle.h"
 #include "chrono_vehicle/wheeled_vehicle/ChWheeledTrailer.h"
@@ -100,8 +104,8 @@
 
 #include "chrono_vehicle/tracked_vehicle/ChSprocket.h"
 #include "chrono_vehicle/tracked_vehicle/ChIdler.h"
-#include "chrono_vehicle/tracked_vehicle/ChRoadWheel.h"
-#include "chrono_vehicle/tracked_vehicle/ChRoadWheelAssembly.h"
+#include "chrono_vehicle/tracked_vehicle/ChTrackWheel.h"
+#include "chrono_vehicle/tracked_vehicle/ChTrackSuspension.h"
 #include "chrono_vehicle/tracked_vehicle/ChTrackShoe.h"
 
 #include "chrono_vehicle/tracked_vehicle/ChTrackBrake.h"
@@ -151,6 +155,7 @@ using namespace chrono::vehicle::m113;
 %include "std_vector.i"
 %include "typemaps.i"
 %include "cstring.i"
+%include "cpointer.i"
 
 #ifdef SWIGPYTHON
 %include "std_wstring.i"
@@ -219,14 +224,16 @@ Before adding a shared_ptr, mark as shared ptr all its inheritance tree in the m
 %shared_ptr(chrono::vehicle::WheeledVehicle)
 %shared_ptr(chrono::vehicle::WheeledTrailer)
 
+%shared_ptr(chrono::vehicle::ChVehicleVisualSystem)
+
 %shared_ptr(chrono::vehicle::ChSuspensionTestRig)
 %shared_ptr(chrono::vehicle::ChSuspensionTestRigPlatform)
 %shared_ptr(chrono::vehicle::ChSuspensionTestRigPushrod)
 
 %shared_ptr(chrono::vehicle::ChSprocket)
 %shared_ptr(chrono::vehicle::ChIdler)
-%shared_ptr(chrono::vehicle::ChRoadWheel)
-%shared_ptr(chrono::vehicle::ChRoadWheelAssembly)
+%shared_ptr(chrono::vehicle::ChTrackWheel)
+%shared_ptr(chrono::vehicle::ChTrackSuspension)
 %shared_ptr(chrono::vehicle::ChTrackShoe)
 %shared_ptr(chrono::vehicle::ChTrackAssembly)
 %shared_ptr(chrono::vehicle::ChTrackBrake)
@@ -244,17 +251,17 @@ Before adding a shared_ptr, mark as shared ptr all its inheritance tree in the m
 %shared_ptr(chrono::vehicle::LinearSpringForce)
 %shared_ptr(chrono::vehicle::LinearDamperForce)
 %shared_ptr(chrono::vehicle::LinearSpringDamperForce)
-%shared_ptr(chrono::vehicle::LinearSpringDamperActuatorForce)
+%shared_ptr(chrono::vehicle::LinearSpringDamperForce)
 %shared_ptr(chrono::vehicle::MapSpringForce)
 %shared_ptr(chrono::vehicle::MapSpringBistopForce)
 %shared_ptr(chrono::vehicle::LinearSpringBistopForce)
 %shared_ptr(chrono::vehicle::DegressiveDamperForce)
 %shared_ptr(chrono::vehicle::MapDamperForce)
-%shared_ptr(chrono::vehicle::MapSpringDamperActuatorForce)
+%shared_ptr(chrono::vehicle::MapSpringDamperForce)
 %shared_ptr(chrono::vehicle::LinearSpringTorque)
 %shared_ptr(chrono::vehicle::LinearDamperTorque)
 %shared_ptr(chrono::vehicle::LinearSpringDamperTorque)
-%shared_ptr(chrono::vehicle::LinearSpringDamperActuatorTorque)
+%shared_ptr(chrono::vehicle::LinearSpringDamperTorque)
 %shared_ptr(chrono::vehicle::MapSpringTorque)
 %shared_ptr(chrono::vehicle::MapDamperTorque)
 
@@ -293,15 +300,14 @@ Before adding a shared_ptr, mark as shared ptr all its inheritance tree in the m
 %import  "chrono_swig/interface/core/ChBodyFrame.i"
 %import  "chrono_swig/interface/core/ChBody.i"
 %import  "chrono_swig/interface/core/ChBodyAuxRef.i"
+%include "chrono_swig/interface/core/ChNodeXYZ.i"
 %import  "chrono_swig/interface/core/ChLinkBase.i"
 %import  "chrono_swig/interface/core/ChLinkLock.i"
 %import  "chrono_swig/interface/core/ChLinkTSDA.i"
 %import  "chrono_swig/interface/core/ChLinkRSDA.i"
 %import  "chrono_swig/interface/core/ChLoad.i"
 %import  "chrono_swig/interface/core/ChShaft.i"
-%import  "chrono_swig/interface/core/ChAsset.i"
-%import  "chrono_swig/interface/core/ChAssetLevel.i"
-%import  "chrono_swig/interface/core/ChVisualization.i"
+%import  "chrono_swig/interface/core/ChVisualShape.i"
 %import  "chrono_swig/interface/core/ChContactContainer.i"
 %import  "../../../chrono/motion_functions/ChFunction.h"
 %import  "chrono_swig/interface/core/ChMaterialSurface.i"
@@ -331,15 +337,14 @@ Before adding a shared_ptr, mark as shared ptr all its inheritance tree in the m
 %import(module = "pychrono.core")  "chrono_swig/interface/core/ChBodyFrame.i"
 %import(module = "pychrono.core")  "chrono_swig/interface/core/ChBody.i"
 %import(module = "pychrono.core")  "chrono_swig/interface/core/ChBodyAuxRef.i"
+%import(module = "pychrono.core")  "chrono_swig/interface/core/ChNodeXYZ.i"
 %import(module = "pychrono.core")  "chrono_swig/interface/core/ChLinkBase.i"
 %import(module = "pychrono.core")  "chrono_swig/interface/core/ChLinkLock.i"
 %import(module = "pychrono.core")  "chrono_swig/interface/core/ChLinkTSDA.i"
 %import(module = "pychrono.core")  "chrono_swig/interface/core/ChLinkRSDA.i"
 %import(module = "pychrono.core")  "chrono_swig/interface/core/ChLoad.i"
 %import(module = "pychrono.core")  "chrono_swig/interface/core/ChShaft.i"
-%import(module = "pychrono.core")  "chrono_swig/interface/core/ChAsset.i"
-%import(module = "pychrono.core")  "chrono_swig/interface/core/ChAssetLevel.i"
-%import(module = "pychrono.core")  "chrono_swig/interface/core/ChVisualization.i"
+%import(module = "pychrono.core")  "chrono_swig/interface/core/ChVisualShape.i"
 %import(module = "pychrono.core")  "chrono_swig/interface/core/ChContactContainer.i"
 %import(module = "pychrono.core")  "../../../chrono/motion_functions/ChFunction.h"
 %import(module = "pychrono.core")  "chrono_swig/interface/core/ChMaterialSurface.i"
@@ -350,6 +355,16 @@ Before adding a shared_ptr, mark as shared ptr all its inheritance tree in the m
 %import(module = "pychrono.core")  "../../../chrono/physics/ChLinkBase.h"
 %import(module = "pychrono.core")  "chrono_swig/interface/core/ChTexture.i"
 %import(module = "pychrono.core")  "../../../chrono/assets/ChTriangleMeshShape.h"
+
+#ifdef CHRONO_IRRLICHT
+
+#define ChApiIrr 
+#define IRRLICHT_API
+#define _IRR_DEPRECATED_
+
+%include "chrono_swig/interface/vehicle/ChVehicleVisualSystemIrrlicht.i"
+#endif
+
 #endif
 
 // TODO: 
@@ -371,6 +386,8 @@ Before adding a shared_ptr, mark as shared ptr all its inheritance tree in the m
 %include "../../../chrono_vehicle/ChVehicle.h"
 %include "ChDriver.i"
 %include "ChTerrain.i"
+%include "../../../chrono_vehicle/ChVehicleVisualSystem.h"
+
 //TODO: antirollbar
 
 // Wheeled vehicles
@@ -404,8 +421,8 @@ Before adding a shared_ptr, mark as shared ptr all its inheritance tree in the m
 
 %include "../../../chrono_vehicle/tracked_vehicle/ChSprocket.h"
 %include "../../../chrono_vehicle/tracked_vehicle/ChIdler.h"
-%include "../../../chrono_vehicle/tracked_vehicle/ChRoadWheel.h"
-%include "../../../chrono_vehicle/tracked_vehicle/ChRoadWheelAssembly.h"
+%include "../../../chrono_vehicle/tracked_vehicle/ChTrackWheel.h"
+%include "../../../chrono_vehicle/tracked_vehicle/ChTrackSuspension.h"
 %include "../../../chrono_vehicle/tracked_vehicle/ChTrackShoe.h"
 
 %include "../../../chrono_vehicle/tracked_vehicle/ChTrackBrake.h"
@@ -476,8 +493,9 @@ Before adding a shared_ptr, mark as shared ptr all its inheritance tree in the m
 %DefSharedPtrDynamicDowncast(chrono::vehicle,ChTire, ChTMeasyTire)
 %DefSharedPtrDynamicDowncast(chrono::vehicle,ChTire, ChRigidTire)
 %DefSharedPtrDynamicDowncast(chrono::vehicle,ChTire, ChReissnerTire)
-%DefSharedPtrDynamicDowncast(chrono::vehicle,ChTire, ChPacejkaTire)
+////%DefSharedPtrDynamicDowncast(chrono::vehicle,ChTire, ChPacejkaTire)
 %DefSharedPtrDynamicDowncast(chrono::vehicle,ChTire, ChPac89Tire)
+%DefSharedPtrDynamicDowncast(chrono::vehicle,ChTire, ChPac02Tire)
 %DefSharedPtrDynamicDowncast(chrono::vehicle,ChTire, ChLugreTire)
 %DefSharedPtrDynamicDowncast(chrono::vehicle,ChTire, ChFialaTire)
 

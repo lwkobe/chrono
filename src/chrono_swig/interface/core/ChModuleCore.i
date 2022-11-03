@@ -61,14 +61,16 @@
 #include "chrono/physics/ChNodeXYZ.h"
 #include "chrono/physics/ChLoadsXYZnode.h"
 #include "chrono/physics/ChIndexedNodes.h"
+
 #include "chrono/assets/ChLineShape.h"
 #include "chrono/assets/ChPathShape.h"
-#include "chrono/assets/ChPointPointDrawing.h"
+#include "chrono/assets/ChPointPointShape.h"
 #include "chrono/assets/ChSurfaceShape.h"
 #include "chrono/assets/ChTriangleMeshShape.h"
 #include "chrono/assets/ChEllipsoidShape.h"
 #include "chrono/assets/ChVisualMaterial.h"
 #include "chrono/assets/ChGlyphs.h"
+#include "chrono/assets/ChVisualSystem.h"
 
 #include "chrono/collision/ChCollisionUtils.h"
 #include "chrono/collision/ChCollisionSystem.h"
@@ -82,6 +84,7 @@
 #include "chrono/utils/ChUtilsInputOutput.h"
 #include "chrono/utils/ChFilters.h"
 #include "chrono/utils/ChUtilsCreators.h"
+
 using namespace chrono;
 using namespace chrono::collision;
 using namespace chrono::geometry;
@@ -133,7 +136,7 @@ using namespace chrono::fea;
 %shared_ptr(chrono::ChFrameMoving<double>)
 
 //%shared_ptr(chrono::ChColor)
-%shared_ptr(chrono::ChObjShapeFile)
+%shared_ptr(chrono::ChObjFileShape)
 %shared_ptr(chrono::ChBoxShape) 
 %shared_ptr(chrono::ChSphereShape)
 %shared_ptr(chrono::ChEllipsoidShape)
@@ -143,13 +146,14 @@ using namespace chrono::fea;
 %shared_ptr(chrono::ChLineShape)
 %shared_ptr(chrono::ChSurfaceShape)
 %shared_ptr(chrono::ChPathShape)
-%shared_ptr(chrono::ChPointPointDrawing)
-%shared_ptr(chrono::ChPointPointSegment)
-%shared_ptr(chrono::ChPointPointSpring)
+%shared_ptr(chrono::ChPointPointShape)
+%shared_ptr(chrono::ChSegmentShape)
+%shared_ptr(chrono::ChSpringShape)
 %shared_ptr(chrono::ChRotSpringShape)
 %shared_ptr(chrono::ChTriangleMeshShape)
 %shared_ptr(chrono::ChBezierCurve)
 %shared_ptr(chrono::ChGlyphs)
+%shared_ptr(chrono::ChVisualSystem)
 
 %shared_ptr(chrono::ChFunction)  
 %shared_ptr(chrono::ChFunction_Const)
@@ -211,10 +215,11 @@ using namespace chrono::fea;
 %shared_ptr(chrono::ChBodyEasyMesh)
 %shared_ptr(chrono::ChBodyEasyClusterOfSpheres)
 %shared_ptr(chrono::ChConveyor)
+%shared_ptr(chrono::ChFeeder)
 %shared_ptr(chrono::ChAparticle)
 %shared_ptr(chrono::ChParticleBase)
 %shared_ptr(chrono::ChIndexedParticles)
-%shared_ptr(chrono::ChParticlesClones)
+%shared_ptr(chrono::ChParticleCloud)
 %shared_ptr(chrono::ChSystemNSC)
 %shared_ptr(chrono::ChSystemSMC)
 %shared_ptr(chrono::ChContactContainer)
@@ -347,13 +352,11 @@ using namespace chrono::fea;
 %include "ChFunction.i"
 
 // assets
-%include "ChAsset.i"
 %include "ChColor.i"
 %include "../chrono/assets/ChVisualMaterial.h"
-%include "ChVisualization.i"
-%include "ChColorAsset.i"
-%include "ChAssetLevel.i"
-%include "ChObjShapeFile.i"
+%include "ChVisualShape.i"
+%include "ChVisualModel.i"
+%include "ChObjFileShape.i"
 %include "ChBoxShape.i"
 %include "ChSphereShape.i"
 %include "ChCylinderShape.i"
@@ -361,13 +364,15 @@ using namespace chrono::fea;
 %include "ChCamera.i"
 %include "../../../chrono/assets/ChLineShape.h"
 %include "../../../chrono/assets/ChPathShape.h"
-%include "../../../chrono/assets/ChPointPointDrawing.h"
+%include "../../../chrono/assets/ChPointPointShape.h"
 %include "../../../chrono/assets/ChSurfaceShape.h"
 %include "../../../chrono/assets/ChTriangleMeshShape.h"
 %include "../../../chrono/assets/ChEllipsoidShape.h"
 %include "../../../chrono/assets/ChGlyphs.h"
+%include "../../../chrono/assets/ChVisualSystem.h"
 
 // physics/  classes
+%include "ChController.i"
 %include "ChLoadable.i"
 %include "ChObject.i"
 %include "ChPhysicsItem.i"
@@ -380,9 +385,11 @@ using namespace chrono::fea;
 %include "ChBody.i"
 %include "ChBodyAuxRef.i"
 %include "../../../chrono/physics/ChBodyEasy.h"
+%include "ChNodeXYZ.i"
 %include "ChConveyor.i"
+%include "ChFeeder.i"
 %include "ChIndexedParticles.i"
-%include "ChParticlesClones.i"
+%include "ChParticleCloud.i"
 %include "ChLinkBase.i"
 %include "ChLink.i"
 %include "ChLinkMarkers.i"
@@ -418,6 +425,7 @@ using namespace chrono::fea;
 %include "ChShaftMotor.i"
 %include "ChLinkMotor.i"
 
+
 // Utils
 
 %include "../../../chrono/utils/ChUtilsInputOutput.h"
@@ -438,32 +446,28 @@ using namespace chrono::fea;
 //  myvis = chrono.CastToChVisualizationShared(myasset)
 //  print ('Could be cast to visualization object?', !myvis.IsNull())
 
-// enable _automatic_ downcasting from ChAsset to derived classes (shared pointers versions)
-%downcast_output_sharedptr(chrono::ChAsset, chrono::ChVisualization, chrono::ChObjShapeFile, chrono::ChBoxShape, chrono::ChSphereShape, chrono::ChCylinderShape, chrono::ChTexture, chrono::ChAssetLevel, chrono::ChCamera, chrono::ChColorAsset)
+// enable _automatic_ downcasting from ChVisualShape to derived classes (shared pointers versions)
+%downcast_output_sharedptr(chrono::ChVisualShape, chrono::ChObjFileShape, chrono::ChBoxShape, chrono::ChSphereShape, chrono::ChCylinderShape)
 
 %DefSharedPtrDynamicDowncast(chrono,ChContactable, ChBody)
 
 %DefSharedPtrDynamicDowncast(chrono,ChLoadable, ChBody)
 %DefSharedPtrDynamicDowncast(chrono,ChLoadable, ChNodeBase)
 
-%DefSharedPtrDynamicDowncast(chrono,ChAsset,ChVisualization)
-%DefSharedPtrDynamicDowncast(chrono,ChAsset,ChObjShapeFile)
-%DefSharedPtrDynamicDowncast(chrono,ChAsset,ChBoxShape)
-%DefSharedPtrDynamicDowncast(chrono,ChAsset,ChSphereShape)
-%DefSharedPtrDynamicDowncast(chrono,ChAsset,ChCylinderShape)
-%DefSharedPtrDynamicDowncast(chrono,ChAsset,ChTexture)
-%DefSharedPtrDynamicDowncast(chrono,ChAsset,ChAssetLevel)
-%DefSharedPtrDynamicDowncast(chrono,ChAsset,ChCamera)
-%DefSharedPtrDynamicDowncast(chrono,ChAsset,ChLineShape)
-%DefSharedPtrDynamicDowncast(chrono,ChAsset,ChSurfaceShape)
-%DefSharedPtrDynamicDowncast(chrono,ChAsset,ChPathShape)
-%DefSharedPtrDynamicDowncast(chrono,ChAsset,ChPointPointDrawing)
-%DefSharedPtrDynamicDowncast(chrono,ChAsset,ChPointPointSegment)
-%DefSharedPtrDynamicDowncast(chrono,ChAsset,ChPointPointSpring)
-%DefSharedPtrDynamicDowncast(chrono,ChAsset,ChRotSpringShape)
-%DefSharedPtrDynamicDowncast(chrono,ChAsset,ChTriangleMeshShape)
-%DefSharedPtrDynamicDowncast(chrono,ChAsset,ChEllipsoidShape)
-%DefSharedPtrDynamicDowncast(chrono,ChAsset,ChVisualMaterial)
+%DefSharedPtrDynamicDowncast(chrono,ChVisualShape,ChObjFileShape)
+%DefSharedPtrDynamicDowncast(chrono,ChVisualShape,ChBoxShape)
+%DefSharedPtrDynamicDowncast(chrono,ChVisualShape,ChSphereShape)
+%DefSharedPtrDynamicDowncast(chrono,ChVisualShape,ChCylinderShape)
+%DefSharedPtrDynamicDowncast(chrono,ChVisualShape,ChTexture)
+%DefSharedPtrDynamicDowncast(chrono,ChVisualShape,ChLineShape)
+%DefSharedPtrDynamicDowncast(chrono,ChVisualShape,ChSurfaceShape)
+%DefSharedPtrDynamicDowncast(chrono,ChVisualShape,ChPathShape)
+%DefSharedPtrDynamicDowncast(chrono,ChVisualShape,ChPointPointShape)
+%DefSharedPtrDynamicDowncast(chrono,ChVisualShape,ChSegmentShape)
+%DefSharedPtrDynamicDowncast(chrono,ChVisualShape,ChSpringShape)
+%DefSharedPtrDynamicDowncast(chrono,ChVisualShape,ChRotSpringShape)
+%DefSharedPtrDynamicDowncast(chrono,ChVisualShape,ChTriangleMeshShape)
+%DefSharedPtrDynamicDowncast(chrono,ChVisualShape,ChEllipsoidShape)
 
 %DefSharedPtrDynamicDowncast(chrono,ChBodyFrame, ChBody)
 %DefSharedPtrDynamicDowncast(chrono,ChBodyFrame, ChBodyAuxRef)
@@ -474,7 +478,9 @@ using namespace chrono::fea;
 %DefSharedPtrDynamicDowncast(chrono,ChPhysicsItem, ChConveyor)
 %DefSharedPtrDynamicDowncast(chrono,ChPhysicsItem, ChBodyAuxRef)
 %DefSharedPtrDynamicDowncast(chrono,ChPhysicsItem, ChIndexedParticles)
-%DefSharedPtrDynamicDowncast(chrono,ChPhysicsItem, ChParticlesClones)
+%DefSharedPtrDynamicDowncast(chrono,ChPhysicsItem, ChParticleCloud)
+
+%DefSharedPtrDynamicDowncast(chrono,ChNodeBase, ChNodeXYZ)
 
 %DefSharedPtrDynamicDowncast(chrono,ChPhysicsItem, ChLink)
 %DefSharedPtrDynamicDowncast(chrono,ChPhysicsItem, ChLinkMarkers)
@@ -605,11 +611,20 @@ using namespace chrono::fea;
 // ADDITIONAL C++ FUNCTIONS / CLASSES THAT ARE USED ONLY FOR PYTHON WRAPPER
 //
 
+%extend chrono::ChBezierCurveTracker {
+public:
+  double ClosestPointCurvature(const chrono::ChVector<double>& loc, chrono::ChFrame<>& tnb) {
+    double curvature;
+    int foo = $self->calcClosestPoint(loc, tnb, curvature);
+    return curvature;
+  }
+};
+
 %inline %{
 
-	// Create a custom ChLog class for logging directly in the Python shell,
-	// because the default ChLog was redirecting to std::cout that is not 
-	// necessarily the console display of python.
+// Create a custom ChLog class for logging directly in the Python shell,
+// because the default ChLog was redirecting to std::cout that is not 
+// necessarily the console display of python.
 namespace chrono
 {
 class ChLogPython : public ChLog 
@@ -629,7 +644,8 @@ public:
 		}
 private:
 };
-};
+
+}
 
 %}
 

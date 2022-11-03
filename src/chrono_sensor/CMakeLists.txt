@@ -10,7 +10,7 @@ IF(NOT ENABLE_MODULE_SENSOR)
   return()
 ENDIF()
 
-message(STATUS "==== Chrono Sensor module ====")
+message(STATUS "\n==== Chrono Sensor module ====\n")
 
 # Return now if CUDA is not available
 if(NOT CUDA_FOUND)
@@ -145,6 +145,7 @@ if(USE_CUDA_NVRTC)
       ${OptiX_INCLUDE}/optixu
       ${CUDA_INCLUDE_DIRS}
       ${CMAKE_CURRENT_SOURCE_DIR}/optix/shaders
+      ${CMAKE_INSTALL_PREFIX}/include
       ${CMAKE_SOURCE_DIR}/src CACHE STRING "NVRTC include dirs as list." FORCE)
     mark_as_advanced(CUDA_NVRTC_INCLUDE_DIRS)
 
@@ -399,14 +400,12 @@ ENDIF()
 # LIST THE UTILITY FILES THAT WILL BE EXPOSED TO THE USER
 #-----------------------------------------------------------------------------
 set(ChronoEngine_sensor_UTILS_SOURCES
-    utils/ChVisualMaterialUtils.cpp
     utils/ChUtilsJSON.cpp
     utils/ChGPSUtils.cpp
     utils/Kdtree.cpp
     utils/Dbscan.cpp
 )
 set(ChronoEngine_sensor_UTILS_HEADERS
-    utils/ChVisualMaterialUtils.h
   	utils/CudaMallocHelper.h
     utils/ChUtilsJSON.h
     utils/ChGPSUtils.h
@@ -558,7 +557,8 @@ install(FILES ${ChronoEngine_sensor_CUDA_HEADERS}
       DESTINATION include/chrono_sensor/cuda)
 install(FILES ${ChronoEngine_sensor_SCENE_HEADERS}
       DESTINATION include/chrono_sensor/optix/scene)
-
+install(FILES ${ChronoEngine_sensor_RT_HEADERS}
+      DESTINATION include/chrono_sensor/optix/shaders)
 
 IF(NOT USE_CUDA_NVRTC)
   install(FILES ${generated_rt_files}

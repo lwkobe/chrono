@@ -48,7 +48,7 @@ Sedan_RigidTire::Sedan_RigidTire(const std::string& name, bool use_mesh) : ChRig
 // -----------------------------------------------------------------------------
 // -----------------------------------------------------------------------------
 void Sedan_RigidTire::CreateContactMaterial(ChContactMethod contact_method) {
-    MaterialInfo minfo;
+    ChContactMaterialData minfo;
     minfo.mu = 0.9f;
     minfo.cr = 0.1f;
     minfo.Y = 2e7f;
@@ -65,8 +65,8 @@ void Sedan_RigidTire::AddVisualizationAssets(VisualizationType vis) {
 }
 
 void Sedan_RigidTire::RemoveVisualizationAssets() {
+    ChPart::RemoveVisualizationAsset(m_wheel->GetSpindle(), m_trimesh_shape);
     ChRigidTire::RemoveVisualizationAssets();
-    RemoveVisualizationMesh(m_trimesh_shape);
 }
 
 }  // end namespace sedan
